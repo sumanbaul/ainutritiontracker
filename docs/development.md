@@ -25,4 +25,4 @@ For an emulator it automatically uses `10.0.2.2`. Set `NUTRILENS_API_BASE_URL` i
 - Confirm API/database readiness: `http://localhost:5241/health/ready`.
 - If a phone cannot reach the API, confirm it is on the same Wi-Fi, allow TCP 5241 through Windows Firewall, and rerun `./scripts/run-mobile.ps1`.
 - An OpenAI configuration error means the API key or `MealVision:Provider=OpenAi` is missing from user secrets.
-- Set `NUTRILENS_ENABLE_MOCK_MODE=true` only when you intentionally need deterministic test scenarios. Mock output does not inspect image contents.
+- Set `NUTRILENS_ENABLE_MOCK_MODE=true` only when you intentionally need deterministic test scenarios. The startup script otherwise selects OpenAI and fails clearly if its key is absent. Mock output does not inspect image contents.
