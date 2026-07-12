@@ -1,0 +1,48 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11828.311
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NutritionTracker.Api", "src\NutritionTracker.Api\NutritionTracker.Api.csproj", "{449C10FD-F662-45EF-82CD-5B17BA2C0C02}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NutritionTracker.Application", "src\NutritionTracker.Application\NutritionTracker.Application.csproj", "{7136C33A-1B90-4CAC-9420-58CFAB43EDC7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NutritionTracker.Domain", "src\NutritionTracker.Domain\NutritionTracker.Domain.csproj", "{167C485A-AC2A-493C-AFE3-1D79BAEB93DF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NutritionTracker.Infrastructure", "src\NutritionTracker.Infrastructure\NutritionTracker.Infrastructure.csproj", "{82B9BF86-BCB9-426B-83B8-4B258D7F94DF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NutritionTracker.UnitTests", "tests\NutritionTracker.UnitTests\NutritionTracker.UnitTests.csproj", "{43E2E7D5-AFC5-4261-80D0-B9572ECEF7C4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NutritionTracker.IntegrationTests", "tests\NutritionTracker.IntegrationTests\NutritionTracker.IntegrationTests.csproj", "{4A7F596A-A887-429F-BB76-D004B34385A1}"
+EndProject
+Global
+  GlobalSection(SolutionConfigurationPlatforms) = preSolution
+    Debug|Any CPU = Debug|Any CPU
+    Release|Any CPU = Release|Any CPU
+  EndGlobalSection
+  GlobalSection(ProjectConfigurationPlatforms) = postSolution
+    {449C10FD-F662-45EF-82CD-5B17BA2C0C02}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+    {449C10FD-F662-45EF-82CD-5B17BA2C0C02}.Debug|Any CPU.Build.0 = Debug|Any CPU
+    {449C10FD-F662-45EF-82CD-5B17BA2C0C02}.Release|Any CPU.ActiveCfg = Release|Any CPU
+    {449C10FD-F662-45EF-82CD-5B17BA2C0C02}.Release|Any CPU.Build.0 = Release|Any CPU
+    {7136C33A-1B90-4CAC-9420-58CFAB43EDC7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+    {7136C33A-1B90-4CAC-9420-58CFAB43EDC7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+    {7136C33A-1B90-4CAC-9420-58CFAB43EDC7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+    {7136C33A-1B90-4CAC-9420-58CFAB43EDC7}.Release|Any CPU.Build.0 = Release|Any CPU
+    {167C485A-AC2A-493C-AFE3-1D79BAEB93DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+    {167C485A-AC2A-493C-AFE3-1D79BAEB93DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+    {167C485A-AC2A-493C-AFE3-1D79BAEB93DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+    {167C485A-AC2A-493C-AFE3-1D79BAEB93DF}.Release|Any CPU.Build.0 = Release|Any CPU
+    {82B9BF86-BCB9-426B-83B8-4B258D7F94DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+    {82B9BF86-BCB9-426B-83B8-4B258D7F94DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+    {82B9BF86-BCB9-426B-83B8-4B258D7F94DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+    {82B9BF86-BCB9-426B-83B8-4B258D7F94DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+    {43E2E7D5-AFC5-4261-80D0-B9572ECEF7C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+    {43E2E7D5-AFC5-4261-80D0-B9572ECEF7C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+    {43E2E7D5-AFC5-4261-80D0-B9572ECEF7C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+    {43E2E7D5-AFC5-4261-80D0-B9572ECEF7C4}.Release|Any CPU.Build.0 = Release|Any CPU
+    {4A7F596A-A887-429F-BB76-D004B34385A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+    {4A7F596A-A887-429F-BB76-D004B34385A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+    {4A7F596A-A887-429F-BB76-D004B34385A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+    {4A7F596A-A887-429F-BB76-D004B34385A1}.Release|Any CPU.Build.0 = Release|Any CPU
+  EndGlobalSection
+EndGlobal

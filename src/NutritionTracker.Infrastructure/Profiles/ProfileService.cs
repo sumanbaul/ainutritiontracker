@@ -1,0 +1,33 @@
+using Microsoft.EntityFrameworkCore;
+using NutritionTracker.Application.Nutrition;
+using NutritionTracker.Application.Profiles;
+using NutritionTracker.Domain.Profiles;
+using NutritionTracker.Infrastructure.Persistence;
+
+namespace NutritionTracker.Infrastructure.Profiles;
+
+public sealed class ProfileService(NutritionTrackerDbContext dbContext, INutritionTargetCalculator calculator) : IProfileService
+{
+    public async Task<ProfileResult> CreateAsync(string userId, ProfileCommand command, CancellationToken cancellationToken)
+    {
+        if (await dbContext.UserProfiles.AnyAsync(x => x.UserId == userId, cancellationToken)) throw new InvalidOperationException("A profile already exists for this user.");
+        var profile = Apply(new UserProfile { UserId = userId }, command); var target = Calculate(profile, command); profile.NutritionTargets.Add(ToEntity(profile.Id, target, command.GoalType, DateOnly.FromDateTime(DateTime.UtcNow)));
+        profile.WeightEntries.Add(new WeightEntry { UserProfileId = profile.Id, WeightKg = profile.CurrentWeightKg, RecordedAtUtc = DateTime.UtcNow }); dbContext.UserProfiles.Add(profile); await dbContext.SaveChangesAsync(cancellationToken); return ToResult(profile, target);
+    }
+    public async Task<ProfileResult?> GetAsync(string userId, CancellationToken cancellationToken)
+    { var profile = await dbContext.UserProfiles.Include(x => x.NutritionTargets).SingleOrDefaultAsync(x => x.UserId == userId, cancellationToken); return profile is null ? null : ToResult(profile, ToResult(profile.NutritionTargets.OrderByDescending(x => x.EffectiveDate).First())); }
+    public async Task<ProfileResult?> UpdateAsync(string userId, ProfileCommand command, CancellationToken cancellationToken)
+    { var profile = await dbContext.UserProfiles.SingleOrDefaultAsync(x => x.UserId == userId, cancellationToken); if (profile is null) return null; Apply(profile, command); var target = Calculate(profile, command); dbContext.DailyNutritionTargets.Add(ToEntity(profile.Id, target, command.GoalType, DateOnly.FromDateTime(DateTime.UtcNow))); await dbContext.SaveChangesAsync(cancellationToken); return ToResult(profile, target); }
+    public async Task<ProfileResult?> RecalculateAsync(string userId, CancellationToken cancellationToken)
+    { var profile = await dbContext.UserProfiles.SingleOrDefaultAsync(x => x.UserId == userId, cancellationToken); if (profile is null) return null; var command = ToCommand(profile); var target = Calculate(profile, command); dbContext.DailyNutritionTargets.Add(ToEntity(profile.Id, target, profile.GoalType, DateOnly.FromDateTime(DateTime.UtcNow))); await dbContext.SaveChangesAsync(cancellationToken); return ToResult(profile, target); }
+    public async Task<WeightEntryResult?> AddWeightAsync(string userId, WeightEntryCommand command, CancellationToken cancellationToken)
+    { var profile = await dbContext.UserProfiles.SingleOrDefaultAsync(x => x.UserId == userId, cancellationToken); if (profile is null) return null; profile.CurrentWeightKg = command.WeightKg; var entry = new WeightEntry { UserProfileId = profile.Id, WeightKg = command.WeightKg, RecordedAtUtc = command.RecordedAtUtc, Notes = command.Notes }; dbContext.WeightEntries.Add(entry); var target = Calculate(profile, ToCommand(profile)); dbContext.DailyNutritionTargets.Add(ToEntity(profile.Id, target, profile.GoalType, DateOnly.FromDateTime(DateTime.UtcNow))); await dbContext.SaveChangesAsync(cancellationToken); return new(entry.Id, entry.WeightKg, entry.RecordedAtUtc, entry.Notes); }
+    public async Task<IReadOnlyList<WeightEntryResult>> GetWeightsAsync(string userId, DateTime? fromUtc, DateTime? toUtc, bool descending, int take, CancellationToken cancellationToken)
+    { var q = dbContext.WeightEntries.Where(x => x.UserProfile.UserId == userId); if (fromUtc.HasValue) q = q.Where(x => x.RecordedAtUtc >= fromUtc); if (toUtc.HasValue) q = q.Where(x => x.RecordedAtUtc <= toUtc); q = descending ? q.OrderByDescending(x => x.RecordedAtUtc) : q.OrderBy(x => x.RecordedAtUtc); return await q.Take(take).Select(x => new WeightEntryResult(x.Id, x.WeightKg, x.RecordedAtUtc, x.Notes)).ToListAsync(cancellationToken); }
+    private NutritionTargetResult Calculate(UserProfile p, ProfileCommand c) => calculator.Calculate(new(p.DateOfBirth, p.BiologicalSex, p.HeightCm, p.CurrentWeightKg, p.ActivityLevel, p.GoalType, DateOnly.FromDateTime(DateTime.UtcNow), c.CustomCalories, c.CustomProteinGrams, c.CustomCarbohydrateGrams, c.CustomFatGrams));
+    private static UserProfile Apply(UserProfile p, ProfileCommand c) { p.Name = c.Name.Trim(); p.DateOfBirth = c.DateOfBirth; p.BiologicalSex = c.BiologicalSex; p.HeightCm = c.HeightCm; p.CurrentWeightKg = c.CurrentWeightKg; p.TargetWeightKg = c.TargetWeightKg; p.ActivityLevel = c.ActivityLevel; p.GoalType = c.GoalType; p.DietPreference = c.DietPreference; p.PreferredMeasurementSystem = c.PreferredMeasurementSystem; p.Timezone = c.Timezone; p.IsOnboardingComplete = true; return p; }
+    private static DailyNutritionTarget ToEntity(Guid id, NutritionTargetResult r, GoalType goal, DateOnly date) => new() { UserProfileId = id, EffectiveDate = date, BasalMetabolicRate = r.BasalMetabolicRate, TotalDailyEnergyExpenditure = r.TotalDailyEnergyExpenditure, TargetCalories = r.TargetCalories, ProteinGrams = r.ProteinGrams, CarbohydrateGrams = r.CarbohydrateGrams, FatGrams = r.FatGrams, FibreGrams = r.FibreGrams, CalculationMethod = r.CalculationMethod, CalculationWarnings = string.Join(" | ", r.Warnings), GoalType = goal };
+    private static NutritionTargetResult ToResult(DailyNutritionTarget x) => new(0, x.BasalMetabolicRate, x.TotalDailyEnergyExpenditure, x.TargetCalories, x.ProteinGrams, x.CarbohydrateGrams, x.FatGrams, x.FibreGrams, x.CalculationMethod, string.IsNullOrWhiteSpace(x.CalculationWarnings) ? [] : x.CalculationWarnings.Split(" | ", StringSplitOptions.None));
+    private static ProfileResult ToResult(UserProfile p, NutritionTargetResult t) => new(p.Id, p.Name, p.DateOfBirth, DateOnly.FromDateTime(DateTime.UtcNow).Year - p.DateOfBirth.Year - (p.DateOfBirth > DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-(DateOnly.FromDateTime(DateTime.UtcNow).Year - p.DateOfBirth.Year)) ? 1 : 0), p.BiologicalSex, p.HeightCm, p.CurrentWeightKg, p.TargetWeightKg, p.ActivityLevel, p.GoalType, p.DietPreference, p.PreferredMeasurementSystem, p.Timezone, p.IsOnboardingComplete, t);
+    private static ProfileCommand ToCommand(UserProfile p) => new(p.Name, p.DateOfBirth, p.BiologicalSex, p.HeightCm, p.CurrentWeightKg, p.TargetWeightKg, p.ActivityLevel, p.GoalType, p.DietPreference, p.PreferredMeasurementSystem, p.Timezone, null, null, null, null);
+}

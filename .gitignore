@@ -1,0 +1,24 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+TestResults/
+App_Data/
+
+# IDE and user files
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Secrets and local environment files
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+
+# Flutter (reserved for a later phase)
+.dart_tool/
+.packages
+mobile/nutrition_tracker_app/.flutter-plugins
+mobile/nutrition_tracker_app/.flutter-plugins-dependencies
+mobile/nutrition_tracker_app/build/
