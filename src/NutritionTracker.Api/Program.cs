@@ -150,6 +150,7 @@ app.MapFoodEndpoints();
 app.MapMealAnalysisEndpoints();
 app.MapMealManagementEndpoints();
 app.MapNutritionExpansionEndpoints();
+app.MapFastingEndpoints();
 app.MapAuthenticationEndpoints();
 app.MapPrivacyEndpoints();
 app.MapMealVisionStatusEndpoints();

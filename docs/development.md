@@ -29,6 +29,8 @@ Use `scripts/curate-food-catalog.ps1` only from a trusted server or developer wo
 
 Use `./scripts/run-mobile.ps1`. For a USB-debugged Android device it uses ADB reverse first, so the app reaches the PC API through `127.0.0.1` without relying on Wi-Fi routing. It falls back to the detected LAN address only when ADB reverse is unavailable, starts the API if necessary, and starts Flutter with the correct development configuration. No ports or Dart defines need to be typed.
 
+For a non-interactive installed debug APK, use `./scripts/install-mobile.ps1` instead of manually building and installing it. It resolves the same device/API route and embeds it as Flutter Dart defines before installation. A plain `flutter build apk --debug` uses the emulator-only fallback (`10.0.2.2`) and therefore cannot connect from a physical phone.
+
 The Development API deliberately serves the mobile HTTP endpoint without an HTTPS redirect so Android can use ADB reverse or LAN HTTP. HTTPS remains required outside Development; Swagger remains available locally at `https://localhost:7241/swagger`.
 
 For an emulator it automatically uses `10.0.2.2`. Set `NUTRILENS_API_BASE_URL` in `.env.local` only when automatic discovery is unsuitable.
@@ -63,5 +65,6 @@ flutter test test/reference_ui_golden_test.dart --update-goldens
 - Confirm the PostgreSQL Windows service is running: `Get-Service postgresql*`.
 - Confirm API/database readiness: `http://localhost:5241/health/ready`.
 - If a phone cannot reach the API, confirm it is on the same Wi-Fi, allow TCP 5241 through Windows Firewall, and rerun `./scripts/run-mobile.ps1`.
+- If an APK installed by a tool cannot reach the API but `run-mobile.ps1` can, reinstall it with `./scripts/install-mobile.ps1`. Flutter Dart defines are compiled into the APK; an APK built without that script falls back to the emulator address and will not work on a physical phone.
 - An OpenAI configuration error means the API key or `MealVision:Provider=OpenAi` is missing from user secrets.
 - Set `NUTRILENS_ENABLE_MOCK_MODE=true` only when you intentionally need deterministic test scenarios. The startup script otherwise selects OpenAI and fails clearly if its key is absent. Mock output does not inspect image contents.

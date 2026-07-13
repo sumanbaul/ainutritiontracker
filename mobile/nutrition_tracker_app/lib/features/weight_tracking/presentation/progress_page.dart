@@ -134,6 +134,14 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
             },
           ),
         ]),
+        const SizedBox(height: 12),
+        _ProgressStat(
+          icon: Icons.timer_outlined,
+          color: AppColors.violet,
+          value:
+              '${summary.fastingMinutes ~/ 60}h ${summary.fastingMinutes % 60}m',
+          label: 'completed fasting this period',
+        ),
         const SizedBox(height: 22),
         Container(
           padding: const EdgeInsets.all(22),

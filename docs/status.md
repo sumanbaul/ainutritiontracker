@@ -28,9 +28,12 @@ Known limitations: temporary development identity remains in use; image retentio
 Implemented rotating JWT authentication, production identity enforcement, private S3-compatible image storage, account export/deletion, recipe meal logging, secure Flutter sessions, user-scoped offline queue/replay primitives, version conflict responses, PostgreSQL CI, and Android release signing templates. External verification still requires deployment JWT/S3/AI secrets and a release upload key. See `docs/phase-14.md` for evidence and commands.
 
 Verified on 2026-07-13: backend build 0 warnings/errors; 22 unit tests; 20 PostgreSQL integration tests against the reset dedicated `nutrition_tracker_integration_tests` database; Flutter analyze clean; 21 Flutter tests; debug APK built, installed, and launched on Redmi Note 10 Lite without a fatal/rendering exception in the sampled log. API-35/36 SDK resource tables remain corrupt locally, so the reproducible workaround pins `sqlite3_flutter_libs` 0.5.24 and compiles with healthy API 34 until the newer SDK downloads can be repaired.
-# Phase 15 (in progress)
+# Phase 15 (MVP stabilization complete)
 
 - Nutrition match state and nullable unknown nutrition are persisted; zero is no longer used for an unmatched item.
 - Review blocks confirmation when unresolved foods remain and labels incomplete estimates explicitly.
 - Self-hosted Production may use protected local retained-image storage only with an explicit opt-in. See [Phase 15](phase-15.md).
 - Verified on 2026-07-13: `dotnet format`, solution build, 22 unit tests, 20 PostgreSQL integration tests, `flutter analyze`, 21 Flutter tests, and debug APK build. Migration `20260713154249_AddNutritionMatchIntegrity` was applied to the local development database.
+- Focused fasting counter completed: active sessions, idempotent completion/cancellation, secure restart cache, opt-in target notification, offline pending end replay, recent history, and Progress summary visibility. It remains informational and non-medical.
+- Final fasting-slice verification on 2026-07-13: `dotnet format`, zero-warning solution build, 24 unit tests, and 22 PostgreSQL integration tests passed. `dart format`, clean `flutter analyze`, 22 Flutter tests, and a debug APK build passed. The APK was reinstalled and launched on connected device `ff628a7d`; the restarted API returned `200 Healthy` and `204` for an authenticated user with no active fast.
+- Device-launch reliability: `scripts/install-mobile.ps1` now resolves the same ADB-reverse/LAN route as `run-mobile.ps1` and compiles the resolved API base URL into directly installed debug APKs. This prevents the physical-device app from silently using Flutter's emulator-only `10.0.2.2` fallback.

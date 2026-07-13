@@ -9,7 +9,7 @@ Set these through a production secret manager, never source control:
 - `Authentication__SigningKey` (at least 32 random characters)
 - `ConnectionStrings__DefaultConnection`
 - selected meal-vision provider key
-- S3-compatible image credentials
+- S3-compatible image credentials, only when `MealAnalysis__Provider=S3`
 
 ## Offline replay and conflicts
 
@@ -19,7 +19,7 @@ Recipe and reminder updates accept `expectedVersion`; stale writes return Proble
 
 ## Private image storage
 
-Development uses `MealAnalysis:Provider=Local`. Production must use `S3` with a private S3-compatible bucket. The server signs requests, validates storage keys, MIME type, and size, and preserves `/api/meals/{mealId}/image` as the only client contract. Configure `RetentionDays`, `DeleteOnMealDelete`, `MaximumImageBytes`, and `AllowedMimeTypes`. Account/meal deletion attempts object deletion; private orphan cleanup should periodically delete objects older than the configured retention that have no database record.
+Development uses `MealAnalysis:Provider=Local`. Self-hosted Production may also use protected Local storage only when `MealAnalysis__AllowLocalInProduction=true`; otherwise it fails closed at startup. S3-compatible private storage remains optional. The server validates storage keys, MIME type, and size, and preserves `/api/meals/{mealId}/image` as the only client contract. Configure `RetentionDays`, `DeleteOnMealDelete`, `MaximumImageBytes`, and `AllowedMimeTypes`. Account/meal deletion attempts object deletion; private orphan cleanup should periodically delete objects older than the configured retention that have no database record.
 
 ## Android toolchain
 

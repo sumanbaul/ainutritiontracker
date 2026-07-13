@@ -10,11 +10,10 @@
 | Phase 12 manual meal logging and review improvements | Complete foundation; custom recipe mobile UX remains a later enhancement |
 | Phase 13 progress and habit mobile product | Complete |
 | Reference-matched adaptive UI, secure meal imagery, and 12-month history activity calendar | Complete |
-| Phase 14 offline replay and conflict UX | Planned |
-| Production authentication and authorization | Next after these milestones |
-| Production image storage, observability, deployment hardening | Planned |
+| Phase 14 authentication, offline replay primitives, and conflict UX | Complete |
+| Phase 15 MVP integrity, Local self-hosted storage, and deployment hardening | Complete |
 
-The next planned milestone is Phase 14: reliable offline replay, server idempotency/version checks, and conflict-resolution UX. Production authentication follows before any public multi-user release.
+The next work should be a deliberately scoped post-MVP data-quality milestone: broader verified food coverage, catalog curation, and nutrition-source review. It must not bypass the current unresolved-item confirmation safety policy.
 # Phase 14
 
 Phase 14 adds production JWT authentication, ownership enforcement, secure token refresh, user-scoped Drift replay primitives, version conflicts, S3-compatible private images, recipe selection/logging, account export/deletion, PostgreSQL CI, and release signing templates. Remaining production operations are listed in `docs/phase-14.md`.

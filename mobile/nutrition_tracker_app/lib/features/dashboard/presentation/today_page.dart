@@ -172,6 +172,18 @@ class _TodayContent extends StatelessWidget {
                 style: const TextStyle(color: AppColors.cyan),
               ),
             ),
+            const SizedBox(height: 14),
+            Card(
+              child: ListTile(
+                leading:
+                    const Icon(Icons.timer_outlined, color: AppColors.violet),
+                title: const Text('Fasting timer'),
+                subtitle:
+                    const Text('Start or review your personal tracking target'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push(RoutePaths.fasting),
+              ),
+            ),
             if (meals.isNotEmpty) ...[
               const SizedBox(height: 26),
               const NutritionSectionTitle('Recent meals',

@@ -8,6 +8,7 @@ import '../../features/meal_capture/presentation/capture_preview_page.dart';
 import '../../features/meal_capture/presentation/meal_review_page.dart';
 import '../../features/meal_capture/presentation/manual_meal_page.dart';
 import '../../features/habits/presentation/habits_page.dart';
+import '../../features/fasting/presentation/fasting_page.dart';
 import '../../shared/presentation/app_shell.dart';
 import '../../shared/presentation/placeholder_page.dart';
 import '../../features/auth/presentation/sign_in_page.dart';
@@ -48,6 +49,8 @@ final appRouterProvider = Provider<GoRouter>((_) => GoRouter(
           path: RoutePaths.recipes,
           builder: (_, __) => const RecipePickerPage()),
       GoRoute(path: RoutePaths.habits, builder: (_, __) => const HabitsPage()),
+      GoRoute(
+          path: RoutePaths.fasting, builder: (_, __) => const FastingPage()),
       GoRoute(
           path: RoutePaths.history,
           builder: (_, __) => const PlaceholderPage(

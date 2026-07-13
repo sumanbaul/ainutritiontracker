@@ -31,6 +31,7 @@ public sealed class NutritionTrackerDbContext(DbContextOptions<NutritionTrackerD
     public DbSet<UserDietaryPreference> UserDietaryPreferences => Set<UserDietaryPreference>();
     public DbSet<HydrationEntry> HydrationEntries => Set<HydrationEntry>();
     public DbSet<FastingWindow> FastingWindows => Set<FastingWindow>();
+    public DbSet<ActiveFast> ActiveFasts => Set<ActiveFast>();
     public DbSet<ReminderPreference> ReminderPreferences => Set<ReminderPreference>();
     public DbSet<ApplicationUser> ApplicationUsers => Set<ApplicationUser>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();

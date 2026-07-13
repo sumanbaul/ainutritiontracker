@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../app/router/route_paths.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/notifications/local_notification_service.dart';
 import '../../../core/result/result.dart';
 import '../../../shared/presentation/nutrition_ui.dart';
@@ -43,36 +45,6 @@ class _HabitsPageState extends ConsumerState<HabitsPage> {
       _reload();
     });
     if (result is Failure<void>) _message(result.failure.message);
-  }
-
-  Future<void> _logFast() async {
-    final hours = await showModalBottomSheet<int>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const NutritionSectionTitle('Log a completed fast',
-                subtitle: 'Choose the duration ending now.'),
-            const SizedBox(height: 18),
-            for (final hours in const [12, 14, 16, 18])
-              ListTile(
-                leading: const Icon(Icons.timer_outlined),
-                title: Text('$hours-hour fast'),
-                onTap: () => Navigator.pop(context, hours),
-              ),
-          ]),
-        ),
-      ),
-    );
-    if (hours == null) return;
-    final end = DateTime.now();
-    final result = await ref
-        .read(habitRepositoryProvider)
-        .addFast(end.subtract(Duration(hours: hours)), end);
-    if (!mounted) return;
-    if (result is Failure<void>) _message(result.failure.message);
-    await _refresh();
   }
 
   Future<void> _addReminder() async {
@@ -171,9 +143,9 @@ class _HabitsPageState extends ConsumerState<HabitsPage> {
                     caption: 'Completed fasting time today',
                     progress: (summary.fastingMinutes / (16 * 60)).clamp(0, 1),
                     action: OutlinedButton.icon(
-                      onPressed: _logFast,
+                      onPressed: () => context.push(RoutePaths.fasting),
                       icon: const Icon(Icons.add),
-                      label: const Text('Log fast'),
+                      label: const Text('Open timer'),
                     ),
                   ),
                   const SizedBox(height: 24),

@@ -49,6 +49,41 @@ public sealed class HabitEndpointTests(FoundationApiFactory factory) : IClassFix
         (await client.GetAsync("/api/habits/summary?period=yearly")).StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    [Fact]
+    public async Task ActiveFastIsUserScopedAndEndingIsIdempotent()
+    {
+        if (!Enabled()) return;
+        using var owner = Client($"fast-owner-{Guid.NewGuid():N}");
+        using var other = Client($"fast-other-{Guid.NewGuid():N}");
+        var startKey = Guid.NewGuid().ToString();
+        using var started = await owner.PostAsJsonAsync("/api/fasting/start", new { targetDurationMinutes = 720, clientIdempotencyKey = startKey });
+        started.StatusCode.Should().Be(HttpStatusCode.Created);
+        using var document = JsonDocument.Parse(await started.Content.ReadAsStringAsync());
+        var id = document.RootElement.GetProperty("id").GetGuid();
+        (await other.GetAsync("/api/fasting/active")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var endKey = Guid.NewGuid().ToString();
+        (await owner.PostAsJsonAsync($"/api/fasting/{id}/end", new { endedAtUtc = DateTime.UtcNow, clientIdempotencyKey = endKey })).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await owner.PostAsJsonAsync($"/api/fasting/{id}/end", new { endedAtUtc = DateTime.UtcNow, clientIdempotencyKey = endKey })).StatusCode.Should().Be(HttpStatusCode.OK);
+        using var summary = await owner.GetAsync("/api/habits/summary?period=daily");
+        using var summaryJson = JsonDocument.Parse(await summary.Content.ReadAsStringAsync());
+        summaryJson.RootElement.GetProperty("fastingMinutes").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task FastingHistoryIsUserScoped()
+    {
+        if (!Enabled()) return;
+        using var owner = Client($"fast-history-owner-{Guid.NewGuid():N}");
+        using var other = Client($"fast-history-other-{Guid.NewGuid():N}");
+        (await owner.PostAsJsonAsync("/api/habits/fasting", new { startedAtUtc = DateTime.UtcNow.AddHours(-2), endedAtUtc = DateTime.UtcNow, clientOperationId = Guid.NewGuid().ToString() })).StatusCode.Should().Be(HttpStatusCode.Created);
+        using var ownerResponse = await owner.GetAsync("/api/fasting/history");
+        using var ownerJson = JsonDocument.Parse(await ownerResponse.Content.ReadAsStringAsync());
+        ownerJson.RootElement.GetArrayLength().Should().BeGreaterThan(0);
+        using var otherResponse = await other.GetAsync("/api/fasting/history");
+        using var otherJson = JsonDocument.Parse(await otherResponse.Content.ReadAsStringAsync());
+        otherJson.RootElement.GetArrayLength().Should().Be(0);
+    }
+
     private HttpClient Client(string user)
     {
         var client = factory.CreateClient();

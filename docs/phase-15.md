@@ -29,3 +29,13 @@ The app queues hydration, weight, completed fasting, reminder settings, and manu
 ## Operations
 
 Before updating the API, take a PostgreSQL backup and a filesystem snapshot of retained images. Apply the EF migration normally; it migrates existing unmatched historical items to `Unresolved`. Do not edit retained image paths manually. Remove expired local images only with an operator-reviewed retention job after confirming the associated database cleanup policy.
+
+For a self-hosted Linux deployment, run the database dump on the server with the secret connection string supplied through the shell or service manager:
+
+```bash
+pg_dump --format=custom --file=nutrilens-$(date +%F).dump "$ConnectionStrings__DefaultConnection"
+pg_restore --clean --if-exists --dbname="$ConnectionStrings__DefaultConnection" nutrilens-YYYY-MM-DD.dump
+tar -C /data/nutrilens -czf nutrilens-meal-images-$(date +%F).tgz meal-images
+```
+
+Take the database dump and image archive close together, retain multiple tested restore points, and restore both from the same backup window. The API must be stopped or writes must be briefly paused when strict point-in-time consistency is required.

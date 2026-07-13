@@ -26,6 +26,11 @@ abstract final class ApiEndpoints {
   static const habitSummary = '/api/habits/summary';
   static const hydration = '/api/habits/hydration';
   static const fasting = '/api/habits/fasting';
+  static const activeFast = '/api/fasting/active';
+  static const fastingHistory = '/api/fasting/history';
+  static const startFast = '/api/fasting/start';
+  static String endFast(String id) => '/api/fasting/$id/end';
+  static String cancelFast(String id) => '/api/fasting/$id/cancel';
   static const reminders = '/api/habits/reminders';
   static String reminder(String id) => '/api/habits/reminders/$id';
 }

@@ -2,7 +2,9 @@
 
 The Android-first Flutter client is under `mobile/nutrition_tracker_app`. It supports authenticated nutrition tracking, manual/recipe meals, camera analysis, habits, progress, and private meal images. See [local development](docs/development.md), [Phase 14](docs/phase-14.md), [Phase 15 integrity and self-hosting](docs/phase-15.md), [architecture](docs/architecture.md), [roadmap](docs/roadmap.md), and [status](docs/status.md).
 
-Backend foundation for a mobile-first nutrition tracker that estimates meal nutrition from photographs and requires user review before logging. Phases 2–7 provide the backend foundation, profile targets, food data, mock vision, draft analysis, confirmation, and dashboard APIs; Flutter and production AI are deferred.
+The focused timestamp-based [fasting counter](docs/fasting-counter.md) supports an active user-scoped session and completed-fast history. It is informational only, not medical advice.
+
+NutriLens is a mobile-first nutrition tracker that estimates meal nutrition from photographs and requires user review before logging. The MVP includes Flutter capture/review, server-side AI provider integration, PostgreSQL persistence, production JWT support, Local self-hosted image retention, offline replay primitives, habits, and progress summaries.
 
 ## Architecture
 
@@ -24,7 +26,6 @@ The dependency direction is `Api -> Application + Infrastructure`, `Infrastructu
 - .NET SDK 10.0.301 (pinned in `global.json`)
 - PostgreSQL 17 or Docker Compose
 
-Docker is not installed on this workstation at the time this foundation was created. Install Docker Desktop or provide a reachable PostgreSQL instance before running database readiness checks or applying migrations.
 
 ## Local setup
 

@@ -11,6 +11,7 @@ abstract final class RoutePaths {
       manualMeal = '/meal/manual',
       recipes = '/recipes',
       habits = '/habits',
+      fasting = '/fasting',
       history = '/history',
       weight = '/weight';
   static String review(String mealId) => '/meal/review/$mealId';

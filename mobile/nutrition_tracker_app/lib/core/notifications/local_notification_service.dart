@@ -70,4 +70,29 @@ class LocalNotificationService {
     await initialize();
     await _plugin.cancel(id);
   }
+
+  Future<void> scheduleAt(
+      {required int id,
+      required DateTime whenLocal,
+      required String title,
+      required String body}) async {
+    await initialize();
+    final scheduled = tz.TZDateTime.from(whenLocal, tz.local);
+    if (!scheduled.isAfter(tz.TZDateTime.now(tz.local))) return;
+    await _plugin.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduled,
+        const NotificationDetails(
+            android: AndroidNotificationDetails(
+                'nutrilens_habits', 'Nutrition and habit reminders',
+                channelDescription:
+                    'Daily meal, hydration, and fasting reminders.',
+                importance: Importance.defaultImportance),
+            iOS: DarwinNotificationDetails()),
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle);
+  }
 }
