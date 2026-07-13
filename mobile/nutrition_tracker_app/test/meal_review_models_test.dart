@@ -14,6 +14,7 @@ void main() {
       'totalFibreGrams': 6,
       'warnings': ['Confirm portion'],
       'provider': 'OpenAi',
+      'hasImage': true,
       'items': [
         {
           'id': '00000000-0000-0000-0000-000000000002',
@@ -36,5 +37,6 @@ void main() {
     expect(review.items.single.grams, 150);
     expect(review.warnings.single, 'Confirm portion');
     expect(review.provider, 'OpenAi');
+    expect(review.hasImage, isTrue);
   });
 }

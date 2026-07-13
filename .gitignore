@@ -22,3 +22,6 @@ appsettings.Local.json
 mobile/nutrition_tracker_app/.flutter-plugins
 mobile/nutrition_tracker_app/.flutter-plugins-dependencies
 mobile/nutrition_tracker_app/build/
+
+# Local development process logs
+.codex/*.log

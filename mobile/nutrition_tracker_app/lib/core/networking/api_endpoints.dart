@@ -13,12 +13,19 @@ abstract final class ApiEndpoints {
   static const mealAnalysis = '/api/meals/analyse';
   static const manualMeal = '/api/meals/manual';
   static String mealReview(String id) => '/api/meals/$id/review';
+  static String mealImage(String id) => '/api/meals/$id/image';
   static String mealItem(String mealId, String itemId) =>
       '/api/meals/$mealId/items/$itemId';
   static String mealItems(String mealId) => '/api/meals/$mealId/items';
   static String mealConfirm(String id) => '/api/meals/$id/confirm';
   static String mealCorrections(String id) => '/api/meals/$id/corrections';
   static const mealHistory = '/api/meals';
+  static const mealActivity = '/api/meals/activity';
   static const dashboardToday = '/api/dashboard/today';
   static const mealVisionCapabilities = '/api/meal-vision/capabilities';
+  static const habitSummary = '/api/habits/summary';
+  static const hydration = '/api/habits/hydration';
+  static const fasting = '/api/habits/fasting';
+  static const reminders = '/api/habits/reminders';
+  static String reminder(String id) => '/api/habits/reminders/$id';
 }

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import 'dart:typed_data';
 
 import '../../app/config/app_config.dart';
 import '../../features/development_setup/domain/development_identity_service.dart';
@@ -53,6 +54,11 @@ class ApiClient {
       _dio.get<String>(path,
           cancelToken: cancelToken,
           options: Options(responseType: ResponseType.plain));
+  Future<Response<Uint8List>> getBytes(String path,
+          {CancelToken? cancelToken}) =>
+      _dio.get<Uint8List>(path,
+          cancelToken: cancelToken,
+          options: Options(responseType: ResponseType.bytes));
   Future<Response<dynamic>> post(String path, {Object? data}) =>
       _dio.post(path, data: data);
   Future<Response<dynamic>> postMultipart(String path, FormData data,

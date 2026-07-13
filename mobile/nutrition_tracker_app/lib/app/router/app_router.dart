@@ -7,6 +7,7 @@ import '../../features/onboarding/presentation/onboarding_page.dart';
 import '../../features/meal_capture/presentation/capture_preview_page.dart';
 import '../../features/meal_capture/presentation/meal_review_page.dart';
 import '../../features/meal_capture/presentation/manual_meal_page.dart';
+import '../../features/habits/presentation/habits_page.dart';
 import '../../shared/presentation/app_shell.dart';
 import '../../shared/presentation/placeholder_page.dart';
 import 'route_paths.dart';
@@ -40,6 +41,7 @@ final appRouterProvider = Provider<GoRouter>((_) => GoRouter(
       GoRoute(
           path: RoutePaths.manualMeal,
           builder: (_, __) => const ManualMealPage()),
+      GoRoute(path: RoutePaths.habits, builder: (_, __) => const HabitsPage()),
       GoRoute(
           path: RoutePaths.history,
           builder: (_, __) => const PlaceholderPage(

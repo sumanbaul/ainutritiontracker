@@ -96,51 +96,61 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               child: Text('Complete onboarding to create your profile.'));
         }
         final p = r.value!;
-        return RefreshIndicator(
-            onRefresh: () async {
-              setState(load);
-              await future;
-            },
-            child: ListView(padding: const EdgeInsets.all(20), children: [
-              CircleAvatar(
-                  radius: 36,
-                  child: Text(p.name.characters.first.toUpperCase())),
-              const SizedBox(height: 12),
-              Text(p.name,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall),
-              TextButton.icon(
-                  onPressed: () => edit(p),
-                  icon: const Icon(Icons.edit_outlined),
-                  label: const Text('Edit profile and goals')),
-              Card(
-                  child: Column(children: [
-                ListTile(
-                    title: const Text('Current weight'),
-                    trailing: Text('${p.currentWeight.toStringAsFixed(1)} kg')),
-                ListTile(
-                    title: const Text('Target weight'),
-                    trailing: Text('${p.targetWeight.toStringAsFixed(1)} kg')),
-                ListTile(
-                    title: const Text('Height'),
-                    trailing: Text('${p.height.toStringAsFixed(1)} cm')),
-                ListTile(title: const Text('Goal'), trailing: Text(p.goal)),
-                ListTile(
-                    title: const Text('Activity'), trailing: Text(p.activity)),
-                ListTile(title: const Text('Diet'), trailing: Text(p.diet))
-              ])),
-              Card(
-                  child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('NUTRITION PROTOCOL'),
-                            Text(
-                                '${p.target.calories.toStringAsFixed(0)} kcal • ${p.target.protein.toStringAsFixed(0)} g protein'),
-                            Text(
-                                'BMR ${p.target.bmr.toStringAsFixed(0)} • TDEE ${p.target.tdee.toStringAsFixed(0)}')
-                          ])))
-            ]));
+        return SafeArea(
+            bottom: false,
+            child: RefreshIndicator(
+                onRefresh: () async {
+                  setState(load);
+                  await future;
+                },
+                child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 116),
+                    children: [
+                      CircleAvatar(
+                          radius: 36,
+                          child: Text(p.name.characters.first.toUpperCase())),
+                      const SizedBox(height: 12),
+                      Text(p.name,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.headlineSmall),
+                      TextButton.icon(
+                          onPressed: () => edit(p),
+                          icon: const Icon(Icons.edit_outlined),
+                          label: const Text('Edit profile and goals')),
+                      Card(
+                          child: Column(children: [
+                        ListTile(
+                            title: const Text('Current weight'),
+                            trailing: Text(
+                                '${p.currentWeight.toStringAsFixed(1)} kg')),
+                        ListTile(
+                            title: const Text('Target weight'),
+                            trailing: Text(
+                                '${p.targetWeight.toStringAsFixed(1)} kg')),
+                        ListTile(
+                            title: const Text('Height'),
+                            trailing:
+                                Text('${p.height.toStringAsFixed(1)} cm')),
+                        ListTile(
+                            title: const Text('Goal'), trailing: Text(p.goal)),
+                        ListTile(
+                            title: const Text('Activity'),
+                            trailing: Text(p.activity)),
+                        ListTile(
+                            title: const Text('Diet'), trailing: Text(p.diet))
+                      ])),
+                      Card(
+                          child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('NUTRITION PROTOCOL'),
+                                    Text(
+                                        '${p.target.calories.toStringAsFixed(0)} kcal • ${p.target.protein.toStringAsFixed(0)} g protein'),
+                                    Text(
+                                        'BMR ${p.target.bmr.toStringAsFixed(0)} • TDEE ${p.target.tdee.toStringAsFixed(0)}')
+                                  ])))
+                    ])));
       });
 }

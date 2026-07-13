@@ -11,7 +11,8 @@ class MealReview {
       required this.items,
       required this.warnings,
       required this.provider,
-      required this.model});
+      required this.model,
+      required this.hasImage});
   final String mealId;
   final String? name;
   final String status;
@@ -20,6 +21,7 @@ class MealReview {
   final List<String> warnings;
   final String provider;
   final String? model;
+  final bool hasImage;
   factory MealReview.fromJson(Map<String, dynamic> json) => MealReview(
       mealId: json['mealId'] as String,
       name: json['name'] as String?,
@@ -35,7 +37,8 @@ class MealReview {
           .toList(),
       warnings: (json['warnings'] as List? ?? const []).cast<String>(),
       provider: json['provider'] as String? ?? 'Unknown',
-      model: json['model'] as String?);
+      model: json['model'] as String?,
+      hasImage: json['hasImage'] as bool? ?? false);
 }
 
 class MealReviewItem {

@@ -141,10 +141,14 @@ class _CapturePreviewPageState extends ConsumerState<CapturePreviewPage> {
     final config = ref.watch(appConfigProvider);
     final camera = _camera;
     final content = <Widget>[
-      Text('Capture meal', style: Theme.of(context).textTheme.headlineSmall),
+      Text('AI Food\nInsights at your fingertips',
+          style: Theme.of(context)
+              .textTheme
+              .headlineLarge
+              ?.copyWith(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       const Text(
-          'Your image is retained on the development backend for draft review. Do not upload sensitive images.'),
+          'Photograph a meal or choose one from your library. You stay in control of every estimate.'),
       const SizedBox(height: 20),
       _preview(camera),
       const SizedBox(height: 16),
@@ -163,28 +167,34 @@ class _CapturePreviewPageState extends ConsumerState<CapturePreviewPage> {
     ];
     return Scaffold(
         body: SafeArea(
+            bottom: false,
             child: ListView(
-                padding: const EdgeInsets.all(20), children: content)));
+                padding: const EdgeInsets.fromLTRB(20, 22, 20, 116),
+                children: content)));
   }
 
   Widget _preview(CameraController? camera) {
     if (camera != null && camera.value.isInitialized) {
       return ClipRRect(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(34),
           child: AspectRatio(
               aspectRatio: camera.value.aspectRatio,
               child: CameraPreview(camera)));
     }
     if (_image != null) {
       return ClipRRect(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(34),
           child: Image.file(_image!,
-              height: 280, width: double.infinity, fit: BoxFit.cover));
+              height: 360, width: double.infinity, fit: BoxFit.cover));
     }
     return Container(
-        height: 280,
+        height: 360,
         decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
+            gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xffE7F6F7), Color(0xffF5E8F9)]),
+            borderRadius: BorderRadius.circular(34),
             border: Border.all(color: Theme.of(context).colorScheme.secondary)),
         child: const Center(
             child: Icon(Icons.document_scanner_outlined, size: 92)));

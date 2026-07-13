@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../app/router/route_paths.dart';
+import '../../../app/theme/app_theme.dart';
 import '../../../core/result/result.dart';
+import '../../../shared/presentation/glass_surface.dart';
 import '../../dashboard/data/dashboard_repository.dart';
 import '../../meal_history/data/meal_history_repository.dart';
 import '../data/meal_repository.dart';
 import '../domain/meal_review.dart';
+import 'meal_photo.dart';
 
 class MealReviewPage extends ConsumerStatefulWidget {
   const MealReviewPage({required this.mealId, super.key});
@@ -17,6 +21,7 @@ class MealReviewPage extends ConsumerStatefulWidget {
 
 class _MealReviewPageState extends ConsumerState<MealReviewPage> {
   late Future<Result<MealReview>> _future;
+  bool _confirming = false;
   @override
   void initState() {
     super.initState();
@@ -31,9 +36,13 @@ class _MealReviewPageState extends ConsumerState<MealReviewPage> {
   }
 
   Future<void> _confirm() async {
-    final r = await ref.read(mealRepositoryProvider).confirm(widget.mealId);
+    if (_confirming) return;
+    setState(() => _confirming = true);
+    final result =
+        await ref.read(mealRepositoryProvider).confirm(widget.mealId);
     if (!mounted) return;
-    if (r is Success<MealReview>) {
+    setState(() => _confirming = false);
+    if (result is Success<MealReview>) {
       ref.invalidate(dashboardRepositoryProvider);
       ref.invalidate(mealHistoryRepositoryProvider);
       context.go(RoutePaths.home);
@@ -47,7 +56,7 @@ class _MealReviewPageState extends ConsumerState<MealReviewPage> {
         TextEditingController(text: (item.grams ?? 0).toStringAsFixed(0));
     final saved = await showDialog<bool>(
         context: context,
-        builder: (c) => AlertDialog(
+        builder: (context) => AlertDialog(
                 title: Text('Edit ${item.detectedName}'),
                 content: TextField(
                     controller: grams,
@@ -56,10 +65,10 @@ class _MealReviewPageState extends ConsumerState<MealReviewPage> {
                     decoration: const InputDecoration(labelText: 'Grams')),
                 actions: [
                   TextButton(
-                      onPressed: () => Navigator.pop(c, false),
+                      onPressed: () => Navigator.pop(context, false),
                       child: const Text('Cancel')),
                   FilledButton(
-                      onPressed: () => Navigator.pop(c, true),
+                      onPressed: () => Navigator.pop(context, true),
                       child: const Text('Save'))
                 ]));
     if (saved == true) {
@@ -74,7 +83,7 @@ class _MealReviewPageState extends ConsumerState<MealReviewPage> {
   Future<void> _addFood() async {
     final query = TextEditingController();
     final grams = TextEditingController(text: '100');
-    List<FoodSearchItem> foods = [];
+    var foods = <FoodSearchItem>[];
     await showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
@@ -88,13 +97,14 @@ class _MealReviewPageState extends ConsumerState<MealReviewPage> {
                       decoration:
                           const InputDecoration(labelText: 'Search food'),
                       onSubmitted: (_) async {
-                        final r = await ref
+                        final result = await ref
                             .read(mealRepositoryProvider)
                             .searchFoods(query.text);
-                        if (r is Success<List<FoodSearchItem>>) {
-                          setSheetState(() => foods = r.value);
+                        if (result is Success<List<FoodSearchItem>>) {
+                          setSheetState(() => foods = result.value);
                         }
                       }),
+                  const SizedBox(height: 10),
                   TextField(
                       controller: grams,
                       keyboardType:
@@ -119,19 +129,22 @@ class _MealReviewPageState extends ConsumerState<MealReviewPage> {
   }
 
   Future<void> _corrections() async {
-    final r = await ref.read(mealRepositoryProvider).corrections(widget.mealId);
+    final result =
+        await ref.read(mealRepositoryProvider).corrections(widget.mealId);
     if (!mounted) return;
     await showModalBottomSheet<void>(
         context: context,
         builder: (context) => Padding(
             padding: const EdgeInsets.all(20),
-            child: r is Success<List<MealCorrection>> && r.value.isNotEmpty
+            child: result is Success<List<MealCorrection>> &&
+                    result.value.isNotEmpty
                 ? ListView(shrinkWrap: true, children: [
-                    const Text('Correction history'),
-                    ...r.value.map((x) => ListTile(
-                        title: Text(x.type),
+                    Text('Correction history',
+                        style: Theme.of(context).textTheme.titleLarge),
+                    ...result.value.map((entry) => ListTile(
+                        title: Text(entry.type),
                         subtitle: Text(
-                            '${x.predictedGrams?.toStringAsFixed(0) ?? '-'} g to ${x.correctedGrams?.toStringAsFixed(0) ?? '-'} g')))
+                            '${entry.predictedGrams?.toStringAsFixed(0) ?? '-'} g to ${entry.correctedGrams?.toStringAsFixed(0) ?? '-'} g')))
                   ])
                 : const SizedBox(
                     height: 100,
@@ -141,121 +154,203 @@ class _MealReviewPageState extends ConsumerState<MealReviewPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: const Text('Review meal')),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+          foregroundColor: Colors.white,
+          title: const Text('Food details'),
+          centerTitle: true),
       body: FutureBuilder<Result<MealReview>>(
           future: _future,
-          builder: (context, s) {
-            if (!s.hasData) {
+          builder: (context, snapshot) {
+            final result = snapshot.data;
+            if (result == null) {
               return const Center(child: CircularProgressIndicator());
             }
-            final r = s.data!;
-            if (r is! Success<MealReview>) {
+            if (result is! Success<MealReview>) {
               return Center(
                   child: TextButton(
                       onPressed: _refresh,
-                      child: const Text('Review unavailable - retry')));
+                      child: const Text('Review unavailable — retry')));
             }
-            final meal = r.value;
-            return RefreshIndicator(
-                onRefresh: _refresh,
-                child: ListView(padding: const EdgeInsets.all(16), children: [
-                  Text(meal.name ?? 'Meal analysis',
-                      style: Theme.of(context).textTheme.headlineSmall),
-                  const SizedBox(height: 12),
-                  Card(
-                      child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(children: [
-                            Row(children: [
-                              Icon(Icons.restaurant_menu,
-                                  color: Theme.of(context).colorScheme.primary),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                  child: Text(meal.status,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelLarge)),
-                              Text(
-                                  '${meal.totalCalories.toStringAsFixed(0)} kcal',
-                                  style:
-                                      Theme.of(context).textTheme.headlineSmall)
-                            ]),
-                            const SizedBox(height: 14),
-                            Row(children: [
-                              _macro(context, 'Protein', meal.totalProtein,
-                                  Colors.purple),
-                              _macro(
-                                  context, 'Fat', meal.totalFat, Colors.blue),
-                              _macro(context, 'Carbs', meal.totalCarbs,
-                                  Colors.orange),
-                              _macro(context, 'Fibre', meal.totalFibre,
-                                  Colors.green)
-                            ])
-                          ]))),
-                  Text(
-                    meal.provider.toLowerCase() == 'mock'
-                        ? 'Simulated analysis — review and edit all items.'
-                        : 'Analysis provider: ${meal.provider}${meal.model == null ? '' : ' • ${meal.model}'}',
-                    style: TextStyle(
-                        color: meal.provider.toLowerCase() == 'mock'
-                            ? Theme.of(context).colorScheme.tertiary
-                            : Theme.of(context).colorScheme.secondary),
-                  ),
-                  if (meal.warnings.isNotEmpty)
-                    Card(
-                        color: Theme.of(context).colorScheme.tertiaryContainer,
-                        child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child:
-                                Text('Review note: ${meal.warnings.first}'))),
-                  ...meal.items.map((item) => Card(
-                      child: ListTile(
-                          title: Text(item.detectedName),
-                          subtitle: Text(
-                              '${item.grams?.toStringAsFixed(0) ?? '?'} g • ${item.calories.toStringAsFixed(0)} kcal\nConfidence ${(item.recognitionConfidence * 100).toStringAsFixed(0)}% • nutrition match ${(item.nutritionMatchConfidence * 100).toStringAsFixed(0)}%'),
-                          isThreeLine: true,
-                          trailing: PopupMenuButton<String>(
-                              onSelected: (x) async {
-                                if (x == 'edit') {
-                                  await _edit(item);
-                                }
-                                if (x == 'remove') {
-                                  await ref
-                                      .read(mealRepositoryProvider)
-                                      .removeItem(widget.mealId, item.id);
-                                  await _refresh();
-                                }
-                              },
-                              itemBuilder: (_) => const [
-                                    PopupMenuItem(
-                                        value: 'edit',
-                                        child: Text('Edit grams')),
-                                    PopupMenuItem(
-                                        value: 'remove', child: Text('Remove'))
-                                  ])))),
-                  OutlinedButton.icon(
-                      onPressed: _addFood,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add food item')),
-                  TextButton.icon(
-                      onPressed: _corrections,
-                      icon: const Icon(Icons.history),
-                      label: const Text('Correction history')),
-                  FilledButton.icon(
-                      onPressed: _confirm,
-                      icon: const Icon(Icons.check),
-                      label: const Text('Confirm meal'))
-                ]));
+            final meal = result.value;
+            return Stack(fit: StackFit.expand, children: [
+              Positioned.fill(
+                  bottom: MediaQuery.sizeOf(context).height * .34,
+                  child: MealPhoto(
+                      mealId: meal.mealId,
+                      hasImage: meal.hasImage,
+                      hero: true)),
+              DraggableScrollableSheet(
+                  initialChildSize: .64,
+                  minChildSize: .48,
+                  maxChildSize: .88,
+                  snap: true,
+                  builder: (context, controller) => GlassSurface(
+                      padding: EdgeInsets.zero,
+                      radius: 34,
+                      blur: 30,
+                      opacity: Theme.of(context).brightness == Brightness.dark
+                          ? .9
+                          : .8,
+                      child: Column(children: [
+                        Expanded(
+                          child: RefreshIndicator(
+                            onRefresh: _refresh,
+                            child: ListView(
+                              controller: controller,
+                              padding:
+                                  const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                              children: [
+                                Center(
+                                    child: Container(
+                                        width: 44,
+                                        height: 5,
+                                        decoration: BoxDecoration(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .outlineVariant,
+                                            borderRadius:
+                                                BorderRadius.circular(9)))),
+                                const SizedBox(height: 18),
+                                Text(meal.name ?? 'Meal analysis',
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineMedium),
+                                const SizedBox(height: 14),
+                                _energy(context, meal),
+                                const SizedBox(height: 12),
+                                Wrap(spacing: 9, runSpacing: 9, children: [
+                                  _macro(context, 'Carbs', meal.totalCarbs,
+                                      AppColors.warning),
+                                  _macro(context, 'Protein', meal.totalProtein,
+                                      AppColors.green),
+                                  _macro(context, 'Fat', meal.totalFat,
+                                      AppColors.cyan),
+                                  _macro(context, 'Fibre', meal.totalFibre,
+                                      AppColors.violet)
+                                ]),
+                                const SizedBox(height: 14),
+                                Text(
+                                    meal.provider.toLowerCase() == 'mock'
+                                        ? 'Simulated analysis — review every estimate.'
+                                        : '${meal.provider}${meal.model == null ? '' : ' • ${meal.model}'} analysis',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                        color: AppColors.softInk,
+                                        fontWeight: FontWeight.w600)),
+                                if (meal.warnings.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+                                  Container(
+                                      padding: const EdgeInsets.all(14),
+                                      decoration: BoxDecoration(
+                                          color: AppColors.warning
+                                              .withOpacity(.14),
+                                          borderRadius:
+                                              BorderRadius.circular(20)),
+                                      child: Text(meal.warnings.first)),
+                                ],
+                                const SizedBox(height: 22),
+                                Text('Detected foods',
+                                    style:
+                                        Theme.of(context).textTheme.titleLarge),
+                                ...meal.items.map((item) => _item(item)),
+                                OutlinedButton.icon(
+                                    onPressed: _addFood,
+                                    icon: const Icon(Icons.add),
+                                    label: const Text('Add food item')),
+                                TextButton.icon(
+                                    onPressed: _corrections,
+                                    icon: const Icon(Icons.history),
+                                    label: const Text('Correction history')),
+                              ],
+                            ),
+                          ),
+                        ),
+                        SafeArea(
+                          top: false,
+                          minimum: const EdgeInsets.fromLTRB(20, 8, 20, 14),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed:
+                                  meal.status == 'Confirmed' || _confirming
+                                      ? null
+                                      : _confirm,
+                              icon: _confirming
+                                  ? const SizedBox.square(
+                                      dimension: 18,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.check),
+                              label: Text(_confirming
+                                  ? 'Confirming meal'
+                                  : meal.status == 'Confirmed'
+                                      ? 'Meal confirmed'
+                                      : 'Confirm meal'),
+                            ),
+                          ),
+                        ),
+                      ])))
+            ]);
           }));
+
+  Widget _item(MealReviewItem item) => ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
+      title: Text(item.detectedName,
+          style: const TextStyle(fontWeight: FontWeight.w700)),
+      subtitle: Text(
+          '${item.grams?.toStringAsFixed(0) ?? '?'} g  •  ${item.calories.toStringAsFixed(0)} kcal\nRecognition ${(item.recognitionConfidence * 100).toStringAsFixed(0)}%  •  nutrition ${(item.nutritionMatchConfidence * 100).toStringAsFixed(0)}%'),
+      trailing: PopupMenuButton<String>(
+          onSelected: (choice) async {
+            if (choice == 'edit') await _edit(item);
+            if (choice == 'remove') {
+              await ref
+                  .read(mealRepositoryProvider)
+                  .removeItem(widget.mealId, item.id);
+              await _refresh();
+            }
+          },
+          itemBuilder: (_) => const [
+                PopupMenuItem(value: 'edit', child: Text('Edit grams')),
+                PopupMenuItem(value: 'remove', child: Text('Remove'))
+              ]));
+
+  Widget _energy(BuildContext context, MealReview meal) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface.withOpacity(.62),
+          borderRadius: BorderRadius.circular(24)),
+      child: Row(children: [
+        const Icon(Icons.local_fire_department, color: AppColors.danger),
+        const SizedBox(width: 9),
+        const Expanded(
+            child: Text('Total energy', overflow: TextOverflow.ellipsis)),
+        const SizedBox(width: 10),
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: AnimatedCount(meal.totalCalories,
+                suffix: ' kcal', style: Theme.of(context).textTheme.titleLarge),
+          ),
+        )
+      ]));
 
   Widget _macro(
           BuildContext context, String label, double value, Color color) =>
-      Expanded(
-          child: Column(children: [
-        Icon(Icons.circle, size: 14, color: color),
-        const SizedBox(height: 4),
-        Text(label),
-        Text('${value.toStringAsFixed(0)} g',
-            style: Theme.of(context).textTheme.titleMedium)
-      ]));
+      Container(
+          width: (MediaQuery.sizeOf(context).width - 70) / 2,
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 13),
+          decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface.withOpacity(.56),
+              borderRadius: BorderRadius.circular(21)),
+          child: Row(children: [
+            Icon(Icons.circle, size: 11, color: color),
+            const SizedBox(width: 7),
+            Expanded(child: Text(label)),
+            Text('${value.toStringAsFixed(0)}g',
+                style: const TextStyle(fontWeight: FontWeight.w800))
+          ]));
 }

@@ -1,6 +1,7 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import '../../app/router/route_paths.dart';
+
+import '../../app/theme/app_theme.dart';
 import '../../features/dashboard/presentation/today_page.dart';
 import '../../features/meal_capture/presentation/capture_preview_page.dart';
 import '../../features/meal_history/presentation/history_page.dart';
@@ -22,30 +23,137 @@ class _AppShellState extends State<AppShell> {
     ProgressPage(),
     ProfilePage(),
   ];
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: const Text('NutriLens'), actions: [
-        IconButton(
-            tooltip: 'Settings',
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => context.push(RoutePaths.settings))
-      ]),
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    return Scaffold(
+      extendBody: true,
       body: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 180),
-          child: KeyedSubtree(key: ValueKey(_index), child: _pages[_index])),
-      bottomNavigationBar: NavigationBar(
-          selectedIndex: _index,
-          onDestinationSelected: (value) => setState(() => _index = value),
-          destinations: const [
-            NavigationDestination(
-                icon: Icon(Icons.today_outlined), label: 'Today'),
-            NavigationDestination(
-                icon: Icon(Icons.add_a_photo_outlined), label: 'Capture'),
-            NavigationDestination(
-                icon: Icon(Icons.history_outlined), label: 'History'),
-            NavigationDestination(
-                icon: Icon(Icons.show_chart_outlined), label: 'Progress'),
-            NavigationDestination(
-                icon: Icon(Icons.person_outline), label: 'Profile')
-          ]));
+        duration:
+            reduceMotion ? Duration.zero : const Duration(milliseconds: 420),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween(begin: const Offset(.025, .015), end: Offset.zero)
+                .animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut)),
+            child: child,
+          ),
+        ),
+        child: KeyedSubtree(key: ValueKey(_index), child: _pages[_index]),
+      ),
+      bottomNavigationBar: GlassNavigationBar(
+        index: _index,
+        onChanged: (index) => setState(() => _index = index),
+      ),
+    );
+  }
+}
+
+class GlassNavigationBar extends StatelessWidget {
+  const GlassNavigationBar(
+      {super.key, required this.index, required this.onChanged});
+  final int index;
+  final ValueChanged<int> onChanged;
+  static const items = [
+    (Icons.home_outlined, Icons.home_rounded, 'Home'),
+    (Icons.document_scanner_outlined, Icons.document_scanner, 'Scan'),
+    (Icons.history_outlined, Icons.history_rounded, 'History'),
+    (Icons.show_chart_outlined, Icons.show_chart_rounded, 'Progress'),
+    (Icons.person_outline, Icons.person, 'Profile'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final reduce = MediaQuery.of(context).disableAnimations;
+    final colors = AppSemanticColors.of(context);
+    return SafeArea(
+      minimum: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(34),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(dark ? .26 : .13),
+                blurRadius: 30,
+                offset: const Offset(0, 12)),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(34),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+            child: Container(
+              height: 70,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: dark
+                      ? [
+                          Colors.white.withOpacity(.12),
+                          colors.glassSurface,
+                        ]
+                      : [
+                          Colors.white.withOpacity(.52),
+                          const Color(0xffEDE9FF).withOpacity(.24),
+                        ],
+                ),
+                borderRadius: BorderRadius.circular(34),
+                border: Border.all(color: colors.glassBorder),
+              ),
+              child: Row(
+                children: List.generate(items.length, (itemIndex) {
+                  final item = items[itemIndex];
+                  final selected = itemIndex == index;
+                  final capture = itemIndex == 1;
+                  return Expanded(
+                    child: Semantics(
+                      selected: selected,
+                      button: true,
+                      label: item.$3,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(26),
+                        onTap: () => onChanged(itemIndex),
+                        child: AnimatedContainer(
+                          duration: reduce
+                              ? Duration.zero
+                              : const Duration(milliseconds: 360),
+                          curve: Curves.easeOutBack,
+                          margin: const EdgeInsets.symmetric(vertical: 9),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? (capture
+                                    ? colors.actionBackground
+                                    : colors.actionBackground)
+                                : capture
+                                    ? colors.foreground.withOpacity(.08)
+                                    : Colors.transparent,
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Icon(
+                            selected ? item.$2 : item.$1,
+                            color: selected
+                                ? colors.actionForeground
+                                : (dark
+                                    ? AppColors.secondaryText
+                                    : AppColors.softInk),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

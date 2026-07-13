@@ -33,6 +33,31 @@ The Development API deliberately serves the mobile HTTP endpoint without an HTTP
 
 For an emulator it automatically uses `10.0.2.2`. Set `NUTRILENS_API_BASE_URL` in `.env.local` only when automatic discovery is unsuitable.
 
+## Phase 13 habits and reminders
+
+Open **Progress -> Habits & routines** to log hydration, record a completed fasting window, and schedule a daily meal reminder. Habit records are stored in PostgreSQL for the current development identity. Reminder preferences are also persisted by the API, while delivery is scheduled locally by Android/iOS and therefore requires notification permission on that device.
+
+The Progress screen can switch between weekly and monthly summaries. Only confirmed meals contribute to calories, meal counts, and adherence. Weight and nutrition trends are informational and are not medical guidance.
+
+## Meal-image privacy and UI previews
+
+Development meal images remain under the configured `MealAnalysis:LocalStorageRoot`. Mobile review/history screens retrieve them through the user-scoped `/api/meals/{mealId}/image` endpoint; filesystem storage keys are never returned. The mobile cache is memory-only and bounded. Set `MealAnalysis:RetainImages=false` when image review after upload is not required; image requests then return `404`.
+
+The floating glass navigation and showcase transitions honor the device's reduced-motion setting. Test narrow layouts with `flutter test test/habits_responsive_test.dart` before changing global button sizing or habit-card actions.
+
+## History activity calendar
+
+History includes a trailing 12-month, Monday-aligned activity grid. **Meals** visualizes confirmed-meal frequency; **Target** visualizes closeness to the calorie target effective on each date. Selecting a square fetches only that profile-timezone day and filters the image-led meal list.
+
+The supporting endpoint is `GET /api/meals/activity?fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD`. It requires `X-Development-User-Id`, accepts at most 371 inclusive dates, excludes draft/failed/deleted meals, and returns each day's UTC boundaries for correct filtering. No migration is required because the response is derived from existing meals, profiles, and nutrition targets.
+
+Visual regression baselines for the light/dark glass dock and activity grid are under `mobile/nutrition_tracker_app/test/goldens`. Update them only after intentionally reviewing a design change:
+
+```powershell
+cd mobile/nutrition_tracker_app
+flutter test test/reference_ui_golden_test.dart --update-goldens
+```
+
 ## Troubleshooting
 
 - Confirm the PostgreSQL Windows service is running: `Get-Service postgresql*`.

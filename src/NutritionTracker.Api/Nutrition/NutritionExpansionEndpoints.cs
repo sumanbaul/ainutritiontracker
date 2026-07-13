@@ -30,8 +30,59 @@ public static class NutritionExpansionEndpoints
     private static async Task<IResult> GetPreferences(HttpContext c, NutritionTrackerDbContext db, CancellationToken ct) => Results.Ok(await db.UserDietaryPreferences.Where(x => x.UserId == User(c)).OrderBy(x => x.Code).Select(x => new { x.Code, x.Notes }).ToListAsync(ct));
     private static async Task<IResult> PutPreferences(HttpContext c, NutritionTrackerDbContext db, IReadOnlyList<UserDietaryPreference> values, CancellationToken ct) { var user = User(c); db.UserDietaryPreferences.RemoveRange(db.UserDietaryPreferences.Where(x => x.UserId == user)); db.UserDietaryPreferences.AddRange(values.Where(x => !string.IsNullOrWhiteSpace(x.Code)).DistinctBy(x => x.Code.Trim(), StringComparer.OrdinalIgnoreCase).Select(x => new UserDietaryPreference { UserId = user, Code = x.Code.Trim().ToLowerInvariant(), Notes = x.Notes?.Trim() })); await db.SaveChangesAsync(ct); return await GetPreferences(c, db, ct); }
     private static async Task<IResult> AddHydration(HttpContext c, NutritionTrackerDbContext db, HabitOperationRequest r, CancellationToken ct) { var user = User(c); if (r.Millilitres is not > 0 or > 5000) return Results.BadRequest(); if (!string.IsNullOrWhiteSpace(r.ClientOperationId) && await db.HydrationEntries.AnyAsync(x => x.UserId == user && x.ClientOperationId == r.ClientOperationId, ct)) return Results.Conflict(); var entry = new HydrationEntry { UserId = user, Millilitres = r.Millilitres.Value, RecordedAtUtc = r.RecordedAtUtc?.ToUniversalTime() ?? DateTime.UtcNow, ClientOperationId = r.ClientOperationId }; db.HydrationEntries.Add(entry); await db.SaveChangesAsync(ct); return Results.Created("/api/habits/hydration", entry); }
-    private static async Task<IResult> AddFasting(HttpContext c, NutritionTrackerDbContext db, HabitOperationRequest r, CancellationToken ct) { var user = User(c); if (r.StartedAtUtc is null || r.EndedAtUtc <= r.StartedAtUtc) return Results.BadRequest(); var entry = new FastingWindow { UserId = user, StartedAtUtc = r.StartedAtUtc.Value.ToUniversalTime(), EndedAtUtc = r.EndedAtUtc?.ToUniversalTime(), ClientOperationId = r.ClientOperationId }; db.FastingWindows.Add(entry); await db.SaveChangesAsync(ct); return Results.Created("/api/habits/fasting", entry); }
+    private static async Task<IResult> AddFasting(HttpContext c, NutritionTrackerDbContext db, HabitOperationRequest r, CancellationToken ct) { var user = User(c); if (r.StartedAtUtc is null || r.EndedAtUtc is null || r.EndedAtUtc <= r.StartedAtUtc) return Results.BadRequest(); if (!string.IsNullOrWhiteSpace(r.ClientOperationId) && await db.FastingWindows.AnyAsync(x => x.UserId == user && x.ClientOperationId == r.ClientOperationId, ct)) return Results.Conflict(); var entry = new FastingWindow { UserId = user, StartedAtUtc = r.StartedAtUtc.Value.ToUniversalTime(), EndedAtUtc = r.EndedAtUtc.Value.ToUniversalTime(), ClientOperationId = r.ClientOperationId }; db.FastingWindows.Add(entry); await db.SaveChangesAsync(ct); return Results.Created("/api/habits/fasting", entry); }
     private static async Task<IResult> GetReminders(HttpContext c, NutritionTrackerDbContext db, CancellationToken ct) => Results.Ok(await db.ReminderPreferences.Where(x => x.UserId == User(c)).OrderBy(x => x.LocalTime).ToListAsync(ct));
     private static async Task<IResult> PutReminder(HttpContext c, NutritionTrackerDbContext db, Guid id, HabitOperationRequest r, CancellationToken ct) { if (string.IsNullOrWhiteSpace(r.Type) || r.LocalTime is null || string.IsNullOrWhiteSpace(r.Timezone)) return Results.BadRequest(); var user = User(c); var item = await db.ReminderPreferences.SingleOrDefaultAsync(x => x.Id == id && x.UserId == user, ct) ?? new ReminderPreference { Id = id, UserId = user }; item.Type = r.Type; item.LocalTime = r.LocalTime.Value; item.Timezone = r.Timezone; item.IsEnabled = r.IsEnabled ?? true; if (item.CreatedAtUtc == default) db.ReminderPreferences.Add(item); await db.SaveChangesAsync(ct); return Results.Ok(item); }
-    private static async Task<IResult> Summary(HttpContext c, NutritionTrackerDbContext db, DateOnly? date, CancellationToken ct) { var user = User(c); var day = date ?? DateOnly.FromDateTime(DateTime.UtcNow); var start = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc); var end = start.AddDays(1); var water = await db.HydrationEntries.Where(x => x.UserId == user && x.RecordedAtUtc >= start && x.RecordedAtUtc < end).SumAsync(x => (decimal?)x.Millilitres, ct) ?? 0; var meals = await db.Meals.Where(x => x.UserId == user && x.Status == Domain.Meals.MealStatus.Confirmed && x.ConsumedAtUtc >= start && x.ConsumedAtUtc < end).CountAsync(ct); return Results.Ok(new { Date = day, HydrationMillilitres = water, ConfirmedMeals = meals, Disclaimer = "Habit summaries are informational and are not medical advice." }); }
+    private static async Task<IResult> Summary(HttpContext c, NutritionTrackerDbContext db, DateOnly? date, string? period, CancellationToken ct)
+    {
+        var user = User(c);
+        var anchor = date ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var normalizedPeriod = period?.Trim().ToLowerInvariant() ?? "daily";
+        var (firstDay, days) = normalizedPeriod switch
+        {
+            "weekly" => (anchor.AddDays(-(((int)anchor.DayOfWeek + 6) % 7)), 7),
+            "monthly" => (new DateOnly(anchor.Year, anchor.Month, 1), DateTime.DaysInMonth(anchor.Year, anchor.Month)),
+            "daily" => (anchor, 1),
+            _ => (default, 0)
+        };
+        if (days == 0) return Results.BadRequest(new { Detail = "Period must be daily, weekly, or monthly." });
+
+        var start = firstDay.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var end = start.AddDays(days);
+        var summaries = await db.DailyNutritionSummaries.AsNoTracking()
+            .Where(x => x.UserId == user && x.SummaryDate >= firstDay && x.SummaryDate < firstDay.AddDays(days))
+            .OrderBy(x => x.SummaryDate)
+            .ToListAsync(ct);
+        var water = await db.HydrationEntries.AsNoTracking().Where(x => x.UserId == user && x.RecordedAtUtc >= start && x.RecordedAtUtc < end).SumAsync(x => (decimal?)x.Millilitres, ct) ?? 0;
+        var fastingWindows = await db.FastingWindows.AsNoTracking().Where(x => x.UserId == user && x.EndedAtUtc != null && x.StartedAtUtc < end && x.EndedAtUtc >= start).Select(x => new { x.StartedAtUtc, x.EndedAtUtc }).ToListAsync(ct);
+        var fastingMinutes = (int)fastingWindows.Sum(x => (x.EndedAtUtc!.Value - x.StartedAtUtc).TotalMinutes);
+        var profile = await db.UserProfiles.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == user, ct);
+        var target = profile is null ? null : await db.DailyNutritionTargets.AsNoTracking().Where(x => x.UserProfileId == profile.Id && x.EffectiveDate <= anchor).OrderByDescending(x => x.EffectiveDate).FirstOrDefaultAsync(ct);
+        var weights = profile is null ? [] : await db.WeightEntries.AsNoTracking().Where(x => x.UserProfileId == profile.Id && x.RecordedAtUtc < end).OrderBy(x => x.RecordedAtUtc).ToListAsync(ct);
+        var periodWeights = weights.Where(x => x.RecordedAtUtc >= start).ToList();
+        var calories = summaries.Sum(x => x.TotalCalories);
+        var targetCalories = target?.TargetCalories * days;
+        var adherence = targetCalories is > 0 ? decimal.Round(calories / targetCalories.Value * 100m, 1) : (decimal?)null;
+        return Results.Ok(new
+        {
+            Period = normalizedPeriod,
+            StartDate = firstDay,
+            EndDate = firstDay.AddDays(days - 1),
+            Days = summaries.Select(x => new { Date = x.SummaryDate, Calories = x.TotalCalories, Meals = x.MealCount }).ToList(),
+            TotalCalories = calories,
+            AverageCalories = days == 0 ? 0 : decimal.Round(calories / days, 1),
+            TotalProteinGrams = summaries.Sum(x => x.TotalProteinGrams),
+            TotalCarbohydrateGrams = summaries.Sum(x => x.TotalCarbohydrateGrams),
+            TotalFatGrams = summaries.Sum(x => x.TotalFatGrams),
+            TotalFibreGrams = summaries.Sum(x => x.TotalFibreGrams),
+            ConfirmedMeals = summaries.Sum(x => x.MealCount),
+            HydrationMillilitres = water,
+            FastingMinutes = fastingMinutes,
+            TargetCalories = targetCalories,
+            CalorieAdherencePercent = adherence,
+            CurrentWeightKg = weights.LastOrDefault()?.WeightKg,
+            WeightChangeKg = periodWeights.Count > 1 ? periodWeights[^1].WeightKg - periodWeights[0].WeightKg : (decimal?)null,
+            Disclaimer = "Habit and nutrition summaries are informational and are not medical advice."
+        });
+    }
 }
