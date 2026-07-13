@@ -35,18 +35,89 @@ class SyncQueues extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [AppSettings, SyncQueues])
+class LocalUsers extends Table {
+  TextColumn get userId => text()();
+  TextColumn get displayName => text().nullable()();
+  DateTimeColumn get lastAuthenticatedAt => dateTime()();
+  DateTimeColumn get lastServerSyncAt => dateTime().nullable()();
+  TextColumn get sessionState =>
+      text().withDefault(const Constant('LocallyAuthenticated'))();
+  @override
+  Set<Column<Object>> get primaryKey => {userId};
+}
+
+class LocalProfiles extends Table {
+  TextColumn get userId => text()();
+  TextColumn get payloadJson => text()();
+  TextColumn get serverVersion => text().nullable()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get localUpdatedAt => dateTime()();
+  TextColumn get syncState => text().withDefault(const Constant('Synced'))();
+  @override
+  Set<Column<Object>> get primaryKey => {userId};
+}
+
+class LocalNutritionTargets extends Table {
+  TextColumn get userId => text()();
+  TextColumn get effectiveDate => text()();
+  TextColumn get payloadJson => text()();
+  TextColumn get serverVersion => text().nullable()();
+  DateTimeColumn get updatedAt => dateTime()();
+  @override
+  Set<Column<Object>> get primaryKey => {userId, effectiveDate};
+}
+
+class LocalDailySummaries extends Table {
+  TextColumn get userId => text()();
+  TextColumn get summaryDate => text()();
+  TextColumn get payloadJson => text()();
+  DateTimeColumn get updatedAt => dateTime()();
+  TextColumn get syncState => text().withDefault(const Constant('Synced'))();
+  @override
+  Set<Column<Object>> get primaryKey => {userId, summaryDate};
+}
+
+class LocalMeals extends Table {
+  TextColumn get localId => text()();
+  TextColumn get serverId => text().nullable()();
+  TextColumn get userId => text()();
+  TextColumn get payloadJson => text()();
+  DateTimeColumn get consumedAt => dateTime()();
+  TextColumn get syncState => text().withDefault(const Constant('Synced'))();
+  BoolColumn get deletedLocally =>
+      boolean().withDefault(const Constant(false))();
+  DateTimeColumn get updatedAt => dateTime()();
+  @override
+  Set<Column<Object>> get primaryKey => {localId};
+}
+
+@DriftDatabase(tables: [
+  AppSettings,
+  SyncQueues,
+  LocalUsers,
+  LocalProfiles,
+  LocalNutritionTargets,
+  LocalDailySummaries,
+  LocalMeals
+])
 class LocalDatabase extends _$LocalDatabase {
   LocalDatabase(super.executor);
   LocalDatabase.inMemory() : super(NativeDatabase.memory());
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
   @override
   MigrationStrategy get migration => MigrationStrategy(
       onCreate: (m) => m.createAll(),
       onUpgrade: (m, from, to) async {
         if (from < 2) await m.deleteTable('sync_queues');
         if (from < 2) await m.createTable(syncQueues);
+        if (from < 3) {
+          await m.createTable(localUsers);
+          await m.createTable(localProfiles);
+          await m.createTable(localNutritionTargets);
+          await m.createTable(localDailySummaries);
+          await m.createTable(localMeals);
+        }
       });
   Future<void> saveSetting(String key, String value) =>
       into(appSettings).insertOnConflictUpdate(AppSettingsCompanion.insert(

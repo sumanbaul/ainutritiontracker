@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,7 +11,6 @@ import '../../../core/result/result.dart';
 import '../../../shared/presentation/glass_surface.dart';
 import '../../profile/data/profile_repository.dart';
 import '../../profile/domain/profile.dart';
-import '../domain/health_repository.dart';
 import '../../auth/data/auth_service.dart';
 
 class SplashPage extends ConsumerStatefulWidget {
@@ -31,26 +30,29 @@ class _SplashPageState extends ConsumerState<SplashPage> {
   Future<void> _route() async {
     final config = ref.read(appConfigProvider);
     final identity = ref.read(developmentIdentityProvider);
-    final health = ApiHealthRepository(ref.read(apiClientProvider));
-    final result = await health.checkLiveness();
+    final userId = config.permitsDevelopmentSetup
+        ? await identity.currentUserId()
+        : await ref.read(authServiceProvider).userId();
+    final hasSession = config.permitsDevelopmentSetup
+        ? userId != null
+        : await ref.read(authServiceProvider).hasSession();
+    if (!hasSession || userId == null) {
+      if (mounted) {
+        context.go(config.permitsDevelopmentSetup
+            ? RoutePaths.setup
+            : RoutePaths.signIn);
+      }
+      return;
+    }
+    final profiles = ref.read(profileRepositoryProvider);
+    final cached = await profiles.getCached(userId);
     if (!mounted) return;
-    if (result is Failure<HealthStatus>) {
-      setState(() => _message = kDebugMode && result.failure.details != null
-          ? '${result.failure.message}\n\n${result.failure.details}'
-          : result.failure.message);
+    if (cached != null) {
+      unawaited(profiles.get(userId: userId));
+      context.go(RoutePaths.home);
       return;
     }
-    if (config.permitsDevelopmentSetup &&
-        await identity.currentUserId() == null) {
-      if (mounted) context.go(RoutePaths.setup);
-      return;
-    }
-    if (!config.permitsDevelopmentSetup &&
-        !await ref.read(authServiceProvider).hasSession()) {
-      if (mounted) context.go(RoutePaths.signIn);
-      return;
-    }
-    final profile = await ref.read(profileRepositoryProvider).get();
+    final profile = await profiles.get(userId: userId);
     if (!mounted) return;
     context.go(profile is Success<UserProfile?> && profile.value != null
         ? RoutePaths.home
