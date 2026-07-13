@@ -76,11 +76,69 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
                       'Start your body-metric timeline\nLog your first weight to track progress.',
                       textAlign: TextAlign.center));
             }
+            final entries = result.value;
+            final newest = entries.first;
+            final oldest = entries.last;
+            final change = newest.weightKg - oldest.weightKg;
+            final min =
+                entries.map((x) => x.weightKg).reduce((a, b) => a < b ? a : b);
+            final max =
+                entries.map((x) => x.weightKg).reduce((a, b) => a > b ? a : b);
             return ListView.builder(
                 padding: const EdgeInsets.all(16),
-                itemCount: result.value.length,
+                itemCount: entries.length + 1,
                 itemBuilder: (context, index) {
-                  final entry = result.value[index];
+                  if (index == 0) {
+                    return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Progress',
+                              style: Theme.of(context).textTheme.headlineSmall),
+                          const SizedBox(height: 12),
+                          Card(
+                              child: Padding(
+                                  padding: const EdgeInsets.all(18),
+                                  child: Row(children: [
+                                    const Icon(Icons.monitor_weight_outlined),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                        child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                          const Text('Weight trend'),
+                                          Text(
+                                              '${newest.weightKg.toStringAsFixed(1)} kg',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .headlineSmall),
+                                          Text(
+                                              '${change >= 0 ? '+' : ''}${change.toStringAsFixed(1)} kg across ${entries.length} entries')
+                                        ]))
+                                  ]))),
+                          Card(
+                              child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('Range'),
+                                        const SizedBox(height: 8),
+                                        LinearProgressIndicator(
+                                            value: max == min
+                                                ? 1
+                                                : (newest.weightKg - min) /
+                                                    (max - min)),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                            '${min.toStringAsFixed(1)}–${max.toStringAsFixed(1)} kg • trends are informational, not medical advice')
+                                      ]))),
+                          const SizedBox(height: 8),
+                          const Text('History')
+                        ]);
+                  }
+                  final entry = entries[index - 1];
                   return Card(
                       child: ListTile(
                           leading: const Icon(Icons.monitor_weight_outlined),

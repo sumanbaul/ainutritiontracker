@@ -60,6 +60,22 @@ class LocalDatabase extends _$LocalDatabase {
           status: 'pending',
           createdAt: DateTime.now().toUtc(),
           updatedAt: DateTime.now().toUtc()));
+  Future<List<SyncQueue>> pendingSync() => (select(syncQueues)
+        ..where((row) => row.status.equals('pending'))
+        ..orderBy([(row) => OrderingTerm.asc(row.createdAt)]))
+      .get();
+  Future<void> markSyncSucceeded(String id) =>
+      (update(syncQueues)..where((row) => row.id.equals(id))).write(
+          SyncQueuesCompanion(
+              status: const Value('succeeded'),
+              updatedAt: Value(DateTime.now().toUtc())));
+  Future<void> markSyncFailed(String id, String message) =>
+      (update(syncQueues)..where((row) => row.id.equals(id))).write(
+          SyncQueuesCompanion(
+              status: const Value('pending'),
+              retryCount: const Value.absent(),
+              lastError: Value(message),
+              updatedAt: Value(DateTime.now().toUtc())));
 }
 
 LazyDatabase openLocalDatabase() => LazyDatabase(() async {

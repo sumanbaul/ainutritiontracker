@@ -9,6 +9,7 @@ using NutritionTracker.Api.Profiles;
 using NutritionTracker.Api.Foods;
 using NutritionTracker.Api.MealVision;
 using NutritionTracker.Api.Meals;
+using NutritionTracker.Api.Nutrition;
 using NutritionTracker.Infrastructure.MealVision;
 using NutritionTracker.Application;
 using NutritionTracker.Infrastructure;
@@ -65,6 +66,7 @@ if (builder.Configuration.GetValue<bool>("FoodSeed:Enabled"))
     await using var scope = app.Services.CreateAsyncScope();
     await FoodDevelopmentSeeder.SeedAsync(scope.ServiceProvider);
     await BengaliFoodSeeder.SeedAsync(scope.ServiceProvider);
+    await NutritionFoundationSeeder.SeedAsync(scope.ServiceProvider);
 }
 
 app.UseGlobalExceptionHandling();
@@ -95,6 +97,7 @@ app.MapProfileEndpoints();
 app.MapFoodEndpoints();
 app.MapMealAnalysisEndpoints();
 app.MapMealManagementEndpoints();
+app.MapNutritionExpansionEndpoints();
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 {
     app.MapMealVisionDevelopmentEndpoints();

@@ -36,6 +36,20 @@ abstract final class AppTheme {
             color: isDark ? AppColors.elevated : Colors.white,
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(22))),
+        appBarTheme: AppBarTheme(
+            backgroundColor: isDark ? AppColors.midnight : Colors.white,
+            foregroundColor:
+                isDark ? AppColors.primaryText : AppColors.midnight,
+            elevation: 0,
+            centerTitle: false),
+        navigationBarTheme: NavigationBarThemeData(
+            backgroundColor: isDark ? const Color(0xff161722) : Colors.white,
+            indicatorColor: isDark
+                ? AppColors.indigo.withOpacity(.35)
+                : AppColors.indigo.withOpacity(.15),
+            labelTextStyle: WidgetStatePropertyAll(TextStyle(
+                color: isDark ? AppColors.primaryText : AppColors.midnight,
+                fontWeight: FontWeight.w600))),
         filledButtonTheme: FilledButtonThemeData(
             style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),

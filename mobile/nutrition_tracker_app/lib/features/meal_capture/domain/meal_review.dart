@@ -50,13 +50,21 @@ class MealReviewItem {
       required this.carbs,
       required this.fat,
       required this.fibre,
+      required this.recognitionConfidence,
+      required this.nutritionMatchConfidence,
       required this.preparationMethod,
       required this.requiresConfirmation,
       required this.warnings});
   final String id, detectedName, servingUnit, preparationMethod;
   final String? foodId;
   final double? grams;
-  final double calories, protein, carbs, fat, fibre;
+  final double calories,
+      protein,
+      carbs,
+      fat,
+      fibre,
+      recognitionConfidence,
+      nutritionMatchConfidence;
   final bool requiresConfirmation;
   final List<String> warnings;
   factory MealReviewItem.fromJson(Map<String, dynamic> json) => MealReviewItem(
@@ -70,6 +78,8 @@ class MealReviewItem {
       carbs: _number(json['carbohydrateGrams']),
       fat: _number(json['fatGrams']),
       fibre: _number(json['fibreGrams']),
+      recognitionConfidence: _number(json['recognitionConfidence']),
+      nutritionMatchConfidence: _number(json['nutritionMatchConfidence']),
       preparationMethod: json['preparationMethod'] as String,
       requiresConfirmation: json['requiresConfirmation'] as bool,
       warnings: (json['warnings'] as List? ?? const []).cast<String>());

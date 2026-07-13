@@ -11,6 +11,7 @@ abstract final class ApiEndpoints {
   static const customFoods = '/api/foods/custom';
   static String customFood(String id) => '/api/foods/custom/$id';
   static const mealAnalysis = '/api/meals/analyse';
+  static const manualMeal = '/api/meals/manual';
   static String mealReview(String id) => '/api/meals/$id/review';
   static String mealItem(String mealId, String itemId) =>
       '/api/meals/$mealId/items/$itemId';

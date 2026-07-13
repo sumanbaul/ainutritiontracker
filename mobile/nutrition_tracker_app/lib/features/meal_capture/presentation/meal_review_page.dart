@@ -161,6 +161,37 @@ class _MealReviewPageState extends ConsumerState<MealReviewPage> {
                 child: ListView(padding: const EdgeInsets.all(16), children: [
                   Text(meal.name ?? 'Meal analysis',
                       style: Theme.of(context).textTheme.headlineSmall),
+                  const SizedBox(height: 12),
+                  Card(
+                      child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(children: [
+                            Row(children: [
+                              Icon(Icons.restaurant_menu,
+                                  color: Theme.of(context).colorScheme.primary),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                  child: Text(meal.status,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelLarge)),
+                              Text(
+                                  '${meal.totalCalories.toStringAsFixed(0)} kcal',
+                                  style:
+                                      Theme.of(context).textTheme.headlineSmall)
+                            ]),
+                            const SizedBox(height: 14),
+                            Row(children: [
+                              _macro(context, 'Protein', meal.totalProtein,
+                                  Colors.purple),
+                              _macro(
+                                  context, 'Fat', meal.totalFat, Colors.blue),
+                              _macro(context, 'Carbs', meal.totalCarbs,
+                                  Colors.orange),
+                              _macro(context, 'Fibre', meal.totalFibre,
+                                  Colors.green)
+                            ])
+                          ]))),
                   Text(
                     meal.provider.toLowerCase() == 'mock'
                         ? 'Simulated analysis — review and edit all items.'
@@ -170,17 +201,19 @@ class _MealReviewPageState extends ConsumerState<MealReviewPage> {
                             ? Theme.of(context).colorScheme.tertiary
                             : Theme.of(context).colorScheme.secondary),
                   ),
-                  Text(
-                      '${meal.totalCalories.toStringAsFixed(0)} kcal - ${meal.totalProtein.toStringAsFixed(0)} g protein'),
                   if (meal.warnings.isNotEmpty)
-                    Text(meal.warnings.join('\n'),
-                        style: TextStyle(
-                            color: Theme.of(context).colorScheme.error)),
+                    Card(
+                        color: Theme.of(context).colorScheme.tertiaryContainer,
+                        child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child:
+                                Text('Review note: ${meal.warnings.first}'))),
                   ...meal.items.map((item) => Card(
                       child: ListTile(
                           title: Text(item.detectedName),
                           subtitle: Text(
-                              '${item.grams?.toStringAsFixed(0) ?? '?'} g - ${item.calories.toStringAsFixed(0)} kcal'),
+                              '${item.grams?.toStringAsFixed(0) ?? '?'} g • ${item.calories.toStringAsFixed(0)} kcal\nConfidence ${(item.recognitionConfidence * 100).toStringAsFixed(0)}% • nutrition match ${(item.nutritionMatchConfidence * 100).toStringAsFixed(0)}%'),
+                          isThreeLine: true,
                           trailing: PopupMenuButton<String>(
                               onSelected: (x) async {
                                 if (x == 'edit') {
@@ -214,4 +247,15 @@ class _MealReviewPageState extends ConsumerState<MealReviewPage> {
                       label: const Text('Confirm meal'))
                 ]));
           }));
+
+  Widget _macro(
+          BuildContext context, String label, double value, Color color) =>
+      Expanded(
+          child: Column(children: [
+        Icon(Icons.circle, size: 14, color: color),
+        const SizedBox(height: 4),
+        Text(label),
+        Text('${value.toStringAsFixed(0)} g',
+            style: Theme.of(context).textTheme.titleMedium)
+      ]));
 }

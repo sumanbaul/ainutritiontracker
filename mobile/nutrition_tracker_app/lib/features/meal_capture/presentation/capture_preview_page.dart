@@ -149,6 +149,10 @@ class _CapturePreviewPageState extends ConsumerState<CapturePreviewPage> {
       _preview(camera),
       const SizedBox(height: 16),
       _sourceControls(camera),
+      TextButton.icon(
+          onPressed: () => context.push(RoutePaths.manualMeal),
+          icon: const Icon(Icons.edit_note),
+          label: const Text('Log a meal manually')),
       if (_image != null) ..._analysisControls(config),
       if (_error != null) ...[
         const SizedBox(height: 16),

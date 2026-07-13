@@ -1,12 +1,16 @@
 using NutritionTracker.Application.Meals;
 using NutritionTracker.Domain.Foods;
+using NutritionTracker.Domain.Meals;
 namespace NutritionTracker.Api.Meals;
 
 public sealed record EditMealItemRequest(Guid? FoodId, decimal? Grams, decimal? ServingQuantity, string? ServingUnitCode, PreparationMethod PreparationMethod);
 public sealed record AddMealItemRequest(Guid FoodId, decimal? Grams, decimal? ServingQuantity, string? ServingUnitCode, PreparationMethod PreparationMethod);
+public sealed record ManualMealItemRequest(Guid FoodId, decimal Grams, PreparationMethod PreparationMethod);
+public sealed record ManualMealRequest(string? Name, MealType MealType, DateTime ConsumedAtUtc, IReadOnlyList<ManualMealItemRequest> Items);
 public static class MealManagementEndpoints
 {
-    public static IEndpointRouteBuilder MapMealManagementEndpoints(this IEndpointRouteBuilder routes) { routes.MapPut("/api/meals/{mealId:guid}/items/{itemId:guid}", Edit); routes.MapPost("/api/meals/{mealId:guid}/items", Add); routes.MapDelete("/api/meals/{mealId:guid}/items/{itemId:guid}", Remove); routes.MapPost("/api/meals/{mealId:guid}/confirm", Confirm); routes.MapDelete("/api/meals/{mealId:guid}", Delete); routes.MapGet("/api/meals", History); routes.MapGet("/api/meals/{mealId:guid}/corrections", Corrections); routes.MapGet("/api/dashboard/today", Today); return routes; }
+    public static IEndpointRouteBuilder MapMealManagementEndpoints(this IEndpointRouteBuilder routes) { routes.MapPost("/api/meals/manual", Manual); routes.MapPut("/api/meals/{mealId:guid}/items/{itemId:guid}", Edit); routes.MapPost("/api/meals/{mealId:guid}/items", Add); routes.MapDelete("/api/meals/{mealId:guid}/items/{itemId:guid}", Remove); routes.MapPost("/api/meals/{mealId:guid}/confirm", Confirm); routes.MapDelete("/api/meals/{mealId:guid}", Delete); routes.MapGet("/api/meals", History); routes.MapGet("/api/meals/{mealId:guid}/corrections", Corrections); routes.MapGet("/api/dashboard/today", Today); return routes; }
+    private static async Task<IResult> Manual(HttpContext c, IMealManagementService s, ManualMealRequest r, CancellationToken ct) { try { var result = await s.CreateManualAsync(User(c), new(r.Name, r.MealType, r.ConsumedAtUtc, r.Items.Select(x => new ManualMealItemCommand(x.FoodId, x.Grams, x.PreparationMethod)).ToList()), ct); return Results.Created($"/api/meals/{result.MealId}/review", result); } catch (ArgumentException x) { return Results.Problem(statusCode: 400, title: x.Message); } }
     private static async Task<IResult> Edit(HttpContext c, IMealManagementService s, Guid mealId, Guid itemId, EditMealItemRequest r, CancellationToken ct) => await Run(() => s.EditItemAsync(User(c), mealId, itemId, new(r.FoodId, r.Grams, r.ServingQuantity, r.ServingUnitCode, r.PreparationMethod), ct));
     private static async Task<IResult> Add(HttpContext c, IMealManagementService s, Guid mealId, AddMealItemRequest r, CancellationToken ct) => await Run(() => s.AddItemAsync(User(c), mealId, new(r.FoodId, r.Grams, r.ServingQuantity, r.ServingUnitCode, r.PreparationMethod), ct));
     private static async Task<IResult> Remove(HttpContext c, IMealManagementService s, Guid mealId, Guid itemId, CancellationToken ct) => await Run(() => s.RemoveItemAsync(User(c), mealId, itemId, ct));

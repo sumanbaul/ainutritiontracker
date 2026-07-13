@@ -15,12 +15,22 @@ public sealed class NutritionTrackerDbContext(DbContextOptions<NutritionTrackerD
     public DbSet<FoodAlias> FoodAliases => Set<FoodAlias>();
     public DbSet<ServingUnit> ServingUnits => Set<ServingUnit>();
     public DbSet<FoodServingConversion> FoodServingConversions => Set<FoodServingConversion>();
+    public DbSet<NutrientDefinition> NutrientDefinitions => Set<NutrientDefinition>();
+    public DbSet<FoodNutrient> FoodNutrients => Set<FoodNutrient>();
+    public DbSet<FoodTag> FoodTags => Set<FoodTag>();
+    public DbSet<FoodTagAssignment> FoodTagAssignments => Set<FoodTagAssignment>();
+    public DbSet<Recipe> Recipes => Set<Recipe>();
+    public DbSet<RecipeIngredient> RecipeIngredients => Set<RecipeIngredient>();
     public DbSet<Meal> Meals => Set<Meal>();
     public DbSet<MealImage> MealImages => Set<MealImage>();
     public DbSet<MealItem> MealItems => Set<MealItem>();
     public DbSet<AiAnalysisRun> AiAnalysisRuns => Set<AiAnalysisRun>();
     public DbSet<UserFoodCorrection> UserFoodCorrections => Set<UserFoodCorrection>();
     public DbSet<DailyNutritionSummary> DailyNutritionSummaries => Set<DailyNutritionSummary>();
+    public DbSet<UserDietaryPreference> UserDietaryPreferences => Set<UserDietaryPreference>();
+    public DbSet<HydrationEntry> HydrationEntries => Set<HydrationEntry>();
+    public DbSet<FastingWindow> FastingWindows => Set<FastingWindow>();
+    public DbSet<ReminderPreference> ReminderPreferences => Set<ReminderPreference>();
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         ApplyAuditTimestamps();

@@ -21,6 +21,10 @@ For a free-per-image local option, install Ollama and pull a vision model, for e
 
 The Bengali/Kolkata catalog is seeded at Development startup. It contains curated, medium-confidence recipe estimates and aliases, not reproduced IFCT data. Review every AI estimate; vendor oil, sugar, portions, and recipes can materially change nutrition.
 
+## Nutrition catalog curation
+
+Use `scripts/curate-food-catalog.ps1` only from a trusted server or developer workstation. It validates a reviewed manifest containing a version, source, reference, and food list. Production curation additionally requires `ALLOW_NUTRILENS_PRODUCTION_CURATION=true`; it is intentionally not exposed as a mobile or public API. Never bulk-import IFCT data without written permission.
+
 ## Daily workflow
 
 Use `./scripts/run-mobile.ps1`. For a USB-debugged Android device it uses ADB reverse first, so the app reaches the PC API through `127.0.0.1` without relying on Wi-Fi routing. It falls back to the detected LAN address only when ADB reverse is unavailable, starts the API if necessary, and starts Flutter with the correct development configuration. No ports or Dart defines need to be typed.

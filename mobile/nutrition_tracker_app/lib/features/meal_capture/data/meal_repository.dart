@@ -44,6 +44,15 @@ class MealRepository {
 
   Future<Result<MealReview>> review(String mealId) async =>
       _reviewRequest(() => _api.get(ApiEndpoints.mealReview(mealId)));
+  Future<Result<MealReview>> createManual(
+          {required String name,
+          required List<Map<String, dynamic>> items}) async =>
+      _reviewRequest(() => _api.post(ApiEndpoints.manualMeal, data: {
+            'name': name,
+            'mealType': 'Unknown',
+            'consumedAtUtc': DateTime.now().toUtc().toIso8601String(),
+            'items': items
+          }));
   Future<Result<MealReview>> updateItem(String mealId, MealReviewItem item,
           {required double grams,
           required String preparationMethod,

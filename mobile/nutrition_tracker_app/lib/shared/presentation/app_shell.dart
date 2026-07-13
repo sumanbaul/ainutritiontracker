@@ -30,7 +30,9 @@ class _AppShellState extends State<AppShell> {
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => context.push(RoutePaths.settings))
       ]),
-      body: _pages[_index],
+      body: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 180),
+          child: KeyedSubtree(key: ValueKey(_index), child: _pages[_index])),
       bottomNavigationBar: NavigationBar(
           selectedIndex: _index,
           onDestinationSelected: (value) => setState(() => _index = value),
