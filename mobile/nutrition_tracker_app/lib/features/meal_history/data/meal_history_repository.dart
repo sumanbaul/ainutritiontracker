@@ -1,7 +1,10 @@
+import 'dart:convert';
+import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/networking/api_client.dart';
 import '../../../core/networking/api_endpoints.dart';
 import '../../../core/result/result.dart';
+import '../../../core/storage/local_database.dart';
 
 class MealHistoryItem {
   const MealHistoryItem(
@@ -77,14 +80,33 @@ class MealActivity {
       );
 }
 
-final mealHistoryRepositoryProvider =
-    Provider((ref) => MealHistoryRepository(ref.watch(apiClientProvider)));
+final mealHistoryRepositoryProvider = Provider((ref) => MealHistoryRepository(
+    ref.watch(apiClientProvider), ref.watch(localDatabaseProvider)));
 
 class MealHistoryRepository {
-  MealHistoryRepository(this._api);
+  MealHistoryRepository(this._api, [this._database]);
   final ApiClient _api;
+  final LocalDatabase? _database;
+  Future<List<MealHistoryItem>> cachedAll(String userId) async {
+    final database = _database;
+    if (database == null) return const [];
+    final rows = await (database.select(database.localMeals)
+          ..where((meal) => meal.userId.equals(userId))
+          ..where((meal) => meal.deletedLocally.equals(false))
+          ..orderBy([(meal) => OrderingTerm.desc(meal.consumedAt)]))
+        .get();
+    return rows
+        .map((row) => MealHistoryItem.fromJson(
+            Map<String, dynamic>.from(jsonDecode(row.payloadJson) as Map)))
+        .toList();
+  }
+
   Future<Result<List<MealHistoryItem>>> getAll() async {
     return _history('${ApiEndpoints.mealHistory}?take=100');
+  }
+
+  Future<Result<List<MealHistoryItem>>> getAllAndCache(String userId) async {
+    return _history('${ApiEndpoints.mealHistory}?take=100', userId: userId);
   }
 
   Future<Result<List<MealHistoryItem>>> getRange(
@@ -115,13 +137,28 @@ class MealHistoryRepository {
     }
   }
 
-  Future<Result<List<MealHistoryItem>>> _history(String path) async {
+  Future<Result<List<MealHistoryItem>>> _history(String path,
+      {String? userId}) async {
     try {
       final r = await _api.get(path);
-      return Success((r.data as List)
-          .map((x) =>
-              MealHistoryItem.fromJson(Map<String, dynamic>.from(x as Map)))
-          .toList());
+      final items = (r.data as List)
+          .map((x) => Map<String, dynamic>.from(x as Map))
+          .toList();
+      final database = _database;
+      if (userId != null && database != null) {
+        for (final item in items) {
+          final meal = MealHistoryItem.fromJson(item);
+          await database.into(database.localMeals).insertOnConflictUpdate(
+              LocalMealsCompanion.insert(
+                  localId: meal.id,
+                  serverId: Value(meal.id),
+                  userId: userId,
+                  payloadJson: jsonEncode(item),
+                  consumedAt: meal.consumedAt.toUtc(),
+                  updatedAt: DateTime.now().toUtc()));
+        }
+      }
+      return Success(items.map(MealHistoryItem.fromJson).toList());
     } catch (_) {
       return const Failure(AppFailure('Meal history could not be loaded.'));
     }

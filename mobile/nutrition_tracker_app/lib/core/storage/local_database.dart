@@ -135,7 +135,7 @@ class LocalDatabase extends _$LocalDatabase {
           required String payloadJson,
           required String idempotencyKey,
           String? dependencyGroup}) =>
-      into(syncQueues).insert(SyncQueuesCompanion.insert(
+      _enqueueWithCompaction(
           id: id,
           operationType: operationType,
           entityType: entityType,
@@ -143,10 +143,41 @@ class LocalDatabase extends _$LocalDatabase {
           userId: userId,
           payloadJson: payloadJson,
           idempotencyKey: idempotencyKey,
-          dependencyGroup: dependencyGroup ?? '$entityType:$entityId',
-          status: 'Pending',
-          createdAt: DateTime.now().toUtc(),
-          updatedAt: DateTime.now().toUtc()));
+          dependencyGroup: dependencyGroup);
+
+  Future<void> _enqueueWithCompaction(
+      {required String id,
+      required String operationType,
+      required String entityType,
+      required String entityId,
+      required String userId,
+      required String payloadJson,
+      required String idempotencyKey,
+      String? dependencyGroup}) async {
+    const compactable = {'update', 'put', 'settings_update'};
+    if (compactable.contains(operationType.toLowerCase())) {
+      await (delete(syncQueues)
+            ..where((row) => row.userId.equals(userId))
+            ..where((row) => row.entityType.equals(entityType))
+            ..where((row) => row.entityId.equals(entityId))
+            ..where((row) => row.status.equals('Pending'))
+            ..where((row) => row.operationType.isIn(compactable)))
+          .go();
+    }
+    await into(syncQueues).insert(SyncQueuesCompanion.insert(
+        id: id,
+        operationType: operationType,
+        entityType: entityType,
+        entityId: entityId,
+        userId: userId,
+        payloadJson: payloadJson,
+        idempotencyKey: idempotencyKey,
+        dependencyGroup: dependencyGroup ?? '$entityType:$entityId',
+        status: 'Pending',
+        createdAt: DateTime.now().toUtc(),
+        updatedAt: DateTime.now().toUtc()));
+  }
+
   Future<List<SyncQueue>> pendingSync(String userId) => (select(syncQueues)
         ..where((row) =>
             row.userId.equals(userId) & row.status.isIn(['Pending', 'Failed']))

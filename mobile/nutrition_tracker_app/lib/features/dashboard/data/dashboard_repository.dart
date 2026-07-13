@@ -51,7 +51,7 @@ class DashboardRepository {
       final r = await _api.get(ApiEndpoints.dashboardToday);
       final json = Map<String, dynamic>.from(r.data as Map);
       final summary = DashboardSummary.fromJson(json);
-      if (userId != null)
+      if (userId != null) {
         await _database
             .into(_database.localDailySummaries)
             .insertOnConflictUpdate(LocalDailySummariesCompanion.insert(
@@ -59,6 +59,7 @@ class DashboardRepository {
                 summaryDate: summary.date.toIso8601String().substring(0, 10),
                 payloadJson: jsonEncode(json),
                 updatedAt: DateTime.now().toUtc()));
+      }
       return Success(summary);
     } catch (_) {
       return const Failure(

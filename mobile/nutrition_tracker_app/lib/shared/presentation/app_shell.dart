@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../features/dashboard/presentation/today_page.dart';
@@ -7,14 +8,16 @@ import '../../features/meal_capture/presentation/capture_preview_page.dart';
 import '../../features/meal_history/presentation/history_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
 import '../../features/weight_tracking/presentation/progress_page.dart';
+import '../../core/sync/offline_sync_service.dart';
+import '../../core/sync/sync_status.dart';
 
-class AppShell extends StatefulWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell> {
   int _index = 0;
   final _pages = const [
     TodayPage(),
@@ -29,27 +32,61 @@ class _AppShellState extends State<AppShell> {
     final reduceMotion = MediaQuery.of(context).disableAnimations;
     return Scaffold(
       extendBody: true,
-      body: AnimatedSwitcher(
-        duration:
-            reduceMotion ? Duration.zero : const Duration(milliseconds: 420),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) => FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween(begin: const Offset(.025, .015), end: Offset.zero)
-                .animate(
-                    CurvedAnimation(parent: animation, curve: Curves.easeOut)),
-            child: child,
+      body: Stack(children: [
+        AnimatedSwitcher(
+          duration:
+              reduceMotion ? Duration.zero : const Duration(milliseconds: 420),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween(begin: const Offset(.025, .015), end: Offset.zero)
+                  .animate(CurvedAnimation(
+                      parent: animation, curve: Curves.easeOut)),
+              child: child,
+            ),
           ),
+          child: KeyedSubtree(key: ValueKey(_index), child: _pages[_index]),
         ),
-        child: KeyedSubtree(key: ValueKey(_index), child: _pages[_index]),
-      ),
+        if (ref.watch(syncStatusProvider).valueOrNull case final status?)
+          _SyncBanner(status: status),
+      ]),
       bottomNavigationBar: GlassNavigationBar(
         index: _index,
         onChanged: (index) => setState(() => _index = index),
       ),
     );
+  }
+}
+
+class _SyncBanner extends StatelessWidget {
+  const _SyncBanner({required this.status});
+  final SyncStatus status;
+  @override
+  Widget build(BuildContext context) {
+    final text = switch (status.state) {
+      SyncState.offline => 'Offline — showing saved data',
+      SyncState.synchronizing =>
+        'Syncing ${status.pendingOperations} change${status.pendingOperations == 1 ? '' : 's'}',
+      SyncState.conflict => status.message ?? 'A change needs review',
+      SyncState.failed => status.message ?? 'Some changes will retry',
+      _ => '',
+    };
+    if (text.isEmpty) return const SizedBox.shrink();
+    return SafeArea(
+        child: Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Material(
+                    color:
+                        Theme.of(context).colorScheme.surface.withOpacity(.94),
+                    borderRadius: BorderRadius.circular(22),
+                    child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
+                        child: Text(text))))));
   }
 }
 

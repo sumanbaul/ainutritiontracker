@@ -7,11 +7,13 @@ import 'package:uuid/uuid.dart';
 import '../networking/api_client.dart';
 import '../storage/local_database.dart';
 import '../../features/auth/data/auth_service.dart';
+import 'sync_status.dart';
 
 class OfflineSyncService {
-  OfflineSyncService(this._db, this._api);
+  OfflineSyncService(this._db, this._api, this._status);
   final LocalDatabase _db;
   final ApiClient _api;
+  final SyncStatusController _status;
   static Duration retryDelay(int retryCount) =>
       Duration(seconds: min(300, pow(2, retryCount).toInt() * 5));
   static bool belongsToUser(String queuedUserId, String currentUserId) =>
@@ -38,9 +40,18 @@ class OfflineSyncService {
 
   Future<void> replay(String userId) async {
     final connectivity = await Connectivity().checkConnectivity();
-    if (connectivity.every((value) => value == ConnectivityResult.none)) return;
+    if (connectivity.every((value) => value == ConnectivityResult.none)) {
+      _status.publish(const SyncStatus(SyncState.offline));
+      return;
+    }
     await _db.recoverInterrupted(userId);
     final queue = await _db.pendingSync(userId);
+    if (queue.isEmpty) {
+      _status.publish(const SyncStatus(SyncState.synced));
+      return;
+    }
+    _status.publish(
+        SyncStatus(SyncState.synchronizing, pendingOperations: queue.length));
     for (final item in queue) {
       if (item.nextRetryAt?.isAfter(DateTime.now().toUtc()) == true) continue;
       await _db.updateSyncStatus(item.id, 'Processing');
@@ -58,6 +69,8 @@ class OfflineSyncService {
         if (error.response?.statusCode == 409) {
           await _db.updateSyncStatus(item.id, 'Conflict',
               error: 'Server data changed. Review before retrying.');
+          _status.publish(const SyncStatus(SyncState.conflict,
+              message: 'Review a conflicting change.'));
           continue;
         }
         final retries = item.retryCount + 1;
@@ -74,11 +87,21 @@ class OfflineSyncService {
         break; // preserve FIFO for dependent operations
       }
     }
+    _status.publish(const SyncStatus(SyncState.synced));
   }
 }
 
+final syncStatusControllerProvider = Provider((ref) {
+  final controller = SyncStatusController();
+  ref.onDispose(controller.dispose);
+  return controller;
+});
+final syncStatusProvider = StreamProvider<SyncStatus>(
+    (ref) => ref.watch(syncStatusControllerProvider).stream);
 final offlineSyncProvider = Provider((ref) => OfflineSyncService(
-    ref.watch(localDatabaseProvider), ref.watch(apiClientProvider)));
+    ref.watch(localDatabaseProvider),
+    ref.watch(apiClientProvider),
+    ref.watch(syncStatusControllerProvider)));
 
 Future<String?> currentUserScope(Ref ref) async =>
     await ref.read(developmentIdentityProvider).currentUserId() ??

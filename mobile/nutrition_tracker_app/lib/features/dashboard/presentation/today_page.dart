@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,8 +6,10 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router/route_paths.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/result/result.dart';
+import '../../../core/networking/api_client.dart';
 import '../../../shared/presentation/nutrition_ui.dart';
 import '../../profile/data/profile_repository.dart';
+import '../../auth/data/auth_service.dart';
 import '../../profile/domain/profile.dart';
 import '../../meal_history/data/meal_history_repository.dart';
 import '../../meal_capture/presentation/meal_photo.dart';
@@ -30,10 +33,50 @@ class _TodayPageState extends ConsumerState<TodayPage> {
   }
 
   void _load() {
-    _profile = ref.read(profileRepositoryProvider).get();
-    _dashboard = ref.read(dashboardRepositoryProvider).today();
-    _history = ref.read(mealHistoryRepositoryProvider).getAll();
+    _profile = _loadProfile();
+    _dashboard = _loadDashboard();
+    _history = _loadHistory();
   }
+
+  Future<Result<UserProfile?>> _loadProfile() async {
+    final userId = await _userId();
+    if (userId == null) return const Success(null);
+    final repository = ref.read(profileRepositoryProvider);
+    final cached = await repository.getCached(userId);
+    if (cached != null) {
+      unawaited(repository.get(userId: userId));
+      return Success(cached);
+    }
+    return repository.get(userId: userId);
+  }
+
+  Future<Result<DashboardSummary>> _loadDashboard() async {
+    final userId = await _userId();
+    if (userId == null) return const Failure(AppFailure('No local session.'));
+    final repository = ref.read(dashboardRepositoryProvider);
+    final cached = await repository.cachedToday(userId, DateTime.now());
+    if (cached != null) {
+      unawaited(repository.today(userId: userId));
+      return Success(cached);
+    }
+    return repository.today(userId: userId);
+  }
+
+  Future<Result<List<MealHistoryItem>>> _loadHistory() async {
+    final userId = await _userId();
+    if (userId == null) return const Success([]);
+    final repository = ref.read(mealHistoryRepositoryProvider);
+    final cached = await repository.cachedAll(userId);
+    if (cached.isNotEmpty) {
+      unawaited(repository.getAllAndCache(userId));
+      return Success(cached);
+    }
+    return repository.getAllAndCache(userId);
+  }
+
+  Future<String?> _userId() async =>
+      await ref.read(developmentIdentityProvider).currentUserId() ??
+      await ref.read(authServiceProvider).userId();
 
   Future<void> _refresh() async {
     setState(_load);

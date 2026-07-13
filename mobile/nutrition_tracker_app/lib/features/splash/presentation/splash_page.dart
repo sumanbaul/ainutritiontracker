@@ -20,6 +20,8 @@ class SplashPage extends ConsumerStatefulWidget {
 }
 
 class _SplashPageState extends ConsumerState<SplashPage> {
+  // The splash copy is retained as mutable state for the retry/error visual.
+  // ignore: prefer_final_fields
   String _message = 'Connecting to NutriLens…';
   @override
   void initState() {
