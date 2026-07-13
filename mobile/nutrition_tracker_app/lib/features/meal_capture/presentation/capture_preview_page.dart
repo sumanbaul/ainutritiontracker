@@ -12,6 +12,7 @@ import '../../../core/result/result.dart';
 import '../data/meal_repository.dart';
 import '../domain/meal_review.dart';
 import '../domain/image_validation.dart';
+import '../../settings/data/meal_vision_settings_repository.dart';
 
 class CapturePreviewPage extends ConsumerStatefulWidget {
   const CapturePreviewPage({super.key});
@@ -111,11 +112,15 @@ class _CapturePreviewPageState extends ConsumerState<CapturePreviewPage> {
       _cancel = CancelToken();
     });
     final config = ref.read(appConfigProvider);
+    final selection =
+        await ref.read(mealVisionSettingsRepositoryProvider).selected();
     final result = await ref.read(mealRepositoryProvider).analyse(image,
         consumedAtUtc: _consumedAt.toUtc(),
         cuisineHint: _hint,
         mockMode: config.enableMockMode,
         mockScenario: _scenario,
+        providerId: selection?.providerId,
+        modelId: selection?.modelId,
         cancelToken: _cancel, onProgress: (sent, total) {
       if (mounted) setState(() => _progress = total == 0 ? 0 : sent / total);
     });

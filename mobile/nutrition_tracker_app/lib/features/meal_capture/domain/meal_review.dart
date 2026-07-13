@@ -10,7 +10,8 @@ class MealReview {
       required this.totalFibre,
       required this.items,
       required this.warnings,
-      required this.provider});
+      required this.provider,
+      required this.model});
   final String mealId;
   final String? name;
   final String status;
@@ -18,6 +19,7 @@ class MealReview {
   final List<MealReviewItem> items;
   final List<String> warnings;
   final String provider;
+  final String? model;
   factory MealReview.fromJson(Map<String, dynamic> json) => MealReview(
       mealId: json['mealId'] as String,
       name: json['name'] as String?,
@@ -32,7 +34,8 @@ class MealReview {
               MealReviewItem.fromJson(Map<String, dynamic>.from(x as Map)))
           .toList(),
       warnings: (json['warnings'] as List? ?? const []).cast<String>(),
-      provider: json['provider'] as String? ?? 'Unknown');
+      provider: json['provider'] as String? ?? 'Unknown',
+      model: json['model'] as String?);
 }
 
 class MealReviewItem {

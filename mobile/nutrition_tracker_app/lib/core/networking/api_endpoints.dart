@@ -19,4 +19,5 @@ abstract final class ApiEndpoints {
   static String mealCorrections(String id) => '/api/meals/$id/corrections';
   static const mealHistory = '/api/meals';
   static const dashboardToday = '/api/dashboard/today';
+  static const mealVisionCapabilities = '/api/meal-vision/capabilities';
 }

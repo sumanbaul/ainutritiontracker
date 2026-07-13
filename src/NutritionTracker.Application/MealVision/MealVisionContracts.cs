@@ -1,7 +1,7 @@
 using NutritionTracker.Domain.Foods;
 namespace NutritionTracker.Application.MealVision;
 
-public enum MealVisionProviderKind { Mock, OpenAi, Gemini }
+public enum MealVisionProviderKind { Mock, OpenAi, Gemini, Anthropic, Ollama, OpenAiCompatible }
 public enum SuggestedMealType { Breakfast, Lunch, Dinner, Snack, Beverage, Unknown }
 public enum ImageQualityIssue { TooDark, TooBright, Blurry, FoodPartiallyVisible, MultipleMeals, Obstructed, TooFar, TooClose, NonFoodImage, UnsupportedImage, Unknown }
 public enum ClarificationImpact { Low, Medium, High }
@@ -9,10 +9,10 @@ public enum EstimatedServingUnit { Gram, Millilitre, Teaspoon, Tablespoon, Cup, 
 public enum AnalysisStatus { Succeeded, SucceededWithWarnings, Rejected, Failed }
 public enum ProviderFailureType { Configuration, Authentication, RateLimited, Timeout, Network, MalformedResponse, SchemaValidation, ContentRejected, UnsupportedImage, Unknown }
 
-public sealed record MealVisionAnalysisInput(byte[] ImageBytes, string MimeType, string? FileName, int? ImageWidth, int? ImageHeight, string Locale, IReadOnlyList<string> PreferredLanguages, IReadOnlyList<string> CuisineHints, string? DietPreference, string? MealContext, string? ClientCorrelationId, string? MockScenario);
+public sealed record MealVisionAnalysisInput(byte[] ImageBytes, string MimeType, string? FileName, int? ImageWidth, int? ImageHeight, string Locale, IReadOnlyList<string> PreferredLanguages, IReadOnlyList<string> CuisineHints, string? DietPreference, string? MealContext, string? ClientCorrelationId, string? MockScenario, string? ProviderId = null, string? ModelId = null);
 public sealed record MealVisionPrompt(string SystemPrompt, string UserPrompt, string PromptVersion, string SchemaVersion);
 public sealed record MealVisionPromptContext(string Locale, IReadOnlyList<string> CuisineHints, string? DietPreference, string? MealContext);
-public sealed record MealVisionProviderRequest(byte[] ImageBytes, string MimeType, MealVisionPrompt Prompt, string Locale, IReadOnlyList<string> CuisineHints, string? DietPreference, int MaximumItems, string? Scenario);
+public sealed record MealVisionProviderRequest(byte[] ImageBytes, string MimeType, MealVisionPrompt Prompt, string Locale, IReadOnlyList<string> CuisineHints, string? DietPreference, int MaximumItems, string? Scenario, string? ModelId = null);
 public sealed record AlternativeCandidate(string Name, decimal Confidence);
 public sealed record ProviderImageQuality(bool Acceptable, decimal Score, IReadOnlyList<ImageQualityIssue> Issues);
 public sealed record ProviderMealItem(string DetectedName, string? RegionalName, string? CategoryHint, string? PreparationMethod, decimal? EstimatedQuantity, string? EstimatedUnit, decimal? EstimatedGrams, decimal RecognitionConfidence, decimal PortionConfidence, IReadOnlyList<AlternativeCandidate> Alternatives, IReadOnlyList<string> VisibleIngredients, IReadOnlyList<string> PossibleHiddenIngredients);
@@ -23,7 +23,10 @@ public sealed record MealVisionAnalysisResult(string AnalysisId, AnalysisStatus 
 public sealed record MealVisionValidationResult(bool IsValid, IReadOnlyList<string> Errors);
 
 public interface IMealVisionProvider { string ProviderName { get; } Task<MealVisionProviderResult> AnalyseAsync(MealVisionProviderRequest request, CancellationToken ct); }
-public interface IMealVisionProviderResolver { IMealVisionProvider Resolve(); }
+public sealed record MealVisionModelCapability(string Id, string DisplayName, bool IsDefault);
+public sealed record MealVisionProviderCapability(string Id, string DisplayName, bool IsLocal, bool IsAvailable, string? UnavailableReason, IReadOnlyList<MealVisionModelCapability> Models);
+public interface IMealVisionProviderCatalog { IReadOnlyList<MealVisionProviderCapability> GetCapabilities(); MealVisionProviderCapability Resolve(string? providerId, string? modelId); }
+public interface IMealVisionProviderResolver { IMealVisionProvider Resolve(string? providerId = null, string? modelId = null); }
 public interface IMealVisionAnalysisService { Task<MealVisionAnalysisResult> AnalyseAsync(MealVisionAnalysisInput input, CancellationToken ct); }
 public interface IMealVisionPromptBuilder { MealVisionPrompt Build(MealVisionPromptContext context); }
 public interface IMealVisionResponseValidator { MealVisionValidationResult Validate(MealVisionProviderResult r, int max); }

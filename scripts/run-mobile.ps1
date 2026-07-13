@@ -14,9 +14,16 @@ if ([string]::IsNullOrWhiteSpace($env:NUTRILENS_API_BASE_URL)) {
     if ($device -like 'emulator-*' -or $env:NUTRILENS_MOBILE_DEVICE -eq 'emulator') {
         $env:NUTRILENS_API_BASE_URL = "http://10.0.2.2:$env:NUTRILENS_API_HTTP_PORT"
     } else {
-        $lanAddress = Get-NutriLensLanAddress
-        if ([string]::IsNullOrWhiteSpace($lanAddress)) { throw 'No LAN IPv4 address was found. Set NUTRILENS_API_BASE_URL in .env.local.' }
-        $env:NUTRILENS_API_BASE_URL = "http://${lanAddress}:$env:NUTRILENS_API_HTTP_PORT"
+        & adb -s $device reverse "tcp:$env:NUTRILENS_API_HTTP_PORT" "tcp:$env:NUTRILENS_API_HTTP_PORT"
+        if ($LASTEXITCODE -eq 0) {
+            $env:NUTRILENS_API_BASE_URL = "http://127.0.0.1:$env:NUTRILENS_API_HTTP_PORT"
+            Write-Host 'Using USB ADB reverse for the API connection.'
+        } else {
+            $lanAddress = Get-NutriLensLanAddress
+            if ([string]::IsNullOrWhiteSpace($lanAddress)) { throw 'No LAN IPv4 address was found. Set NUTRILENS_API_BASE_URL in .env.local.' }
+            $env:NUTRILENS_API_BASE_URL = "http://${lanAddress}:$env:NUTRILENS_API_HTTP_PORT"
+            Write-Warning 'ADB reverse was unavailable; using the detected LAN address instead.'
+        }
     }
 }
 

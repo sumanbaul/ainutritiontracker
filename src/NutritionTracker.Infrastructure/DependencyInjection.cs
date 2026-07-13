@@ -35,7 +35,7 @@ public static class DependencyInjection
         });
         services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<IFoodService, FoodService>();
-        services.AddOptions<MealVisionOptions>().Bind(configuration.GetSection(MealVisionOptions.SectionName)).Validate(x => x.RequestTimeoutSeconds is >= 1 and <= 300 && x.MaximumImageBytes is >= 1024 and <= 20_000_000 && x.MaximumItems is >= 1 and <= 50 && x.MinimumRecognitionConfidence is >= 0 and <= 1 && x.MinimumPortionConfidence is >= 0 and <= 1 && !string.IsNullOrWhiteSpace(x.PromptVersion) && !string.IsNullOrWhiteSpace(x.SchemaVersion) && (x.Provider != MealVisionProviderKind.OpenAi || (!string.IsNullOrWhiteSpace(x.OpenAi.ApiKey) && Uri.TryCreate(x.OpenAi.Endpoint, UriKind.Absolute, out _) && !string.IsNullOrWhiteSpace(x.OpenAi.Model) && x.OpenAi.MaxOutputTokens is >= 256 and <= 8_000)), "MealVision configuration is invalid. Configure MealVision:OpenAi:ApiKey when Provider is OpenAi.").ValidateOnStart();
+        services.AddOptions<MealVisionOptions>().Bind(configuration.GetSection(MealVisionOptions.SectionName)).Validate(x => x.RequestTimeoutSeconds is >= 1 and <= 300 && x.MaximumImageBytes is >= 1024 and <= 20_000_000 && x.MaximumItems is >= 1 and <= 50 && x.MinimumRecognitionConfidence is >= 0 and <= 1 && x.MinimumPortionConfidence is >= 0 and <= 1 && !string.IsNullOrWhiteSpace(x.PromptVersion) && !string.IsNullOrWhiteSpace(x.SchemaVersion) && (x.Provider != MealVisionProviderKind.OpenAi || (!string.IsNullOrWhiteSpace(x.OpenAi.ApiKey) && Uri.TryCreate(x.OpenAi.Endpoint, UriKind.Absolute, out _) && !string.IsNullOrWhiteSpace(x.OpenAi.Model) && x.OpenAi.MaxOutputTokens is >= 256 and <= 8_000)), "MealVision configuration is invalid. Configure credentials only in user secrets or environment variables.").ValidateOnStart();
         services.AddSingleton<IMealVisionProvider, MockMealVisionProvider>();
         services.AddHttpClient<OpenAiMealVisionProvider>((serviceProvider, client) =>
         {
@@ -44,6 +44,19 @@ public static class DependencyInjection
             client.Timeout = Timeout.InfiniteTimeSpan;
         });
         services.AddSingleton<IMealVisionProvider>(serviceProvider => serviceProvider.GetRequiredService<OpenAiMealVisionProvider>());
+        services.AddHttpClient<OllamaMealVisionProvider>((serviceProvider, client) =>
+        {
+            client.BaseAddress = new Uri(serviceProvider.GetRequiredService<IOptions<MealVisionOptions>>().Value.Ollama.Endpoint, UriKind.Absolute);
+            client.Timeout = Timeout.InfiniteTimeSpan;
+        });
+        services.AddSingleton<IMealVisionProvider>(serviceProvider => serviceProvider.GetRequiredService<OllamaMealVisionProvider>());
+        services.AddHttpClient<GeminiMealVisionProvider>((sp, client) => { client.BaseAddress = new Uri(sp.GetRequiredService<IOptions<MealVisionOptions>>().Value.Gemini.Endpoint); client.Timeout = Timeout.InfiniteTimeSpan; });
+        services.AddSingleton<IMealVisionProvider>(sp => sp.GetRequiredService<GeminiMealVisionProvider>());
+        services.AddHttpClient<AnthropicMealVisionProvider>((sp, client) => { client.BaseAddress = new Uri(sp.GetRequiredService<IOptions<MealVisionOptions>>().Value.Anthropic.Endpoint); client.Timeout = Timeout.InfiniteTimeSpan; });
+        services.AddSingleton<IMealVisionProvider>(sp => sp.GetRequiredService<AnthropicMealVisionProvider>());
+        services.AddHttpClient<OpenAiCompatibleMealVisionProvider>((sp, client) => { var endpoint = sp.GetRequiredService<IOptions<MealVisionOptions>>().Value.OpenAiCompatible.Endpoint; if (Uri.TryCreate(endpoint, UriKind.Absolute, out var uri)) client.BaseAddress = uri; client.Timeout = Timeout.InfiniteTimeSpan; });
+        services.AddSingleton<IMealVisionProvider>(sp => sp.GetRequiredService<OpenAiCompatibleMealVisionProvider>());
+        services.AddSingleton<IMealVisionProviderCatalog, MealVisionProviderCatalog>();
         services.AddSingleton<IMealVisionProviderResolver, MealVisionProviderResolver>();
         services.AddSingleton<IMealVisionResponseValidator, MealVisionResponseValidator>();
         services.AddSingleton<IMealVisionPromptBuilder>(sp => { var x = sp.GetRequiredService<IOptions<MealVisionOptions>>().Value; return new MealVisionPromptBuilder(x.PromptVersion, x.SchemaVersion); });

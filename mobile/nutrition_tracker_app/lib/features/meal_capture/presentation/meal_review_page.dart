@@ -164,7 +164,7 @@ class _MealReviewPageState extends ConsumerState<MealReviewPage> {
                   Text(
                     meal.provider.toLowerCase() == 'mock'
                         ? 'Simulated analysis — review and edit all items.'
-                        : 'Analysis provider: ${meal.provider}',
+                        : 'Analysis provider: ${meal.provider}${meal.model == null ? '' : ' • ${meal.model}'}',
                     style: TextStyle(
                         color: meal.provider.toLowerCase() == 'mock'
                             ? Theme.of(context).colorScheme.tertiary

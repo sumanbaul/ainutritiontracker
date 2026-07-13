@@ -51,7 +51,7 @@ public sealed class OpenAiMealVisionProvider(HttpClient client, IOptions<MealVis
 
     internal static object CreateRequest(MealVisionProviderRequest request, OpenAiMealVisionOptions options) => new
     {
-        model = options.Model,
+        model = request.ModelId ?? options.Model,
         instructions = request.Prompt.SystemPrompt,
         input = new[]
         {

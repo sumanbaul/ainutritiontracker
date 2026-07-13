@@ -17,6 +17,8 @@ class MealRepository {
       required String? cuisineHint,
       required bool mockMode,
       required String? mockScenario,
+      String? providerId,
+      String? modelId,
       CancelToken? cancelToken,
       ProgressCallback? onProgress}) async {
     try {
@@ -27,7 +29,9 @@ class MealRepository {
         'locale': 'en-IN',
         if (cuisineHint != null && cuisineHint.trim().isNotEmpty)
           'cuisineHints': cuisineHint.trim(),
-        if (mockMode && mockScenario != null) 'mockScenario': mockScenario
+        if (mockMode && mockScenario != null) 'mockScenario': mockScenario,
+        if (providerId != null) 'providerId': providerId,
+        if (modelId != null) 'modelId': modelId
       });
       final r = await _api.postMultipart(ApiEndpoints.mealAnalysis, form,
           cancelToken: cancelToken, onSendProgress: onProgress);

@@ -64,6 +64,7 @@ if (builder.Configuration.GetValue<bool>("FoodSeed:Enabled"))
 {
     await using var scope = app.Services.CreateAsyncScope();
     await FoodDevelopmentSeeder.SeedAsync(scope.ServiceProvider);
+    await BengaliFoodSeeder.SeedAsync(scope.ServiceProvider);
 }
 
 app.UseGlobalExceptionHandling();
@@ -75,7 +76,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// Android development uses ADB reverse/LAN HTTP. Keep HTTPS mandatory outside Development.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
@@ -93,6 +98,7 @@ app.MapMealManagementEndpoints();
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 {
     app.MapMealVisionDevelopmentEndpoints();
+    app.MapMealVisionCapabilitiesEndpoints();
 }
 
 app.Run();
