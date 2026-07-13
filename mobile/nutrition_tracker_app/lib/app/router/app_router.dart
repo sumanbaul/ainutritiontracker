@@ -10,6 +10,8 @@ import '../../features/meal_capture/presentation/manual_meal_page.dart';
 import '../../features/habits/presentation/habits_page.dart';
 import '../../shared/presentation/app_shell.dart';
 import '../../shared/presentation/placeholder_page.dart';
+import '../../features/auth/presentation/sign_in_page.dart';
+import '../../features/recipes/presentation/recipe_picker_page.dart';
 import 'route_paths.dart';
 
 final appRouterProvider = Provider<GoRouter>((_) => GoRouter(
@@ -17,6 +19,7 @@ final appRouterProvider = Provider<GoRouter>((_) => GoRouter(
     routes: [
       GoRoute(path: '/', redirect: (_, __) => RoutePaths.splash),
       GoRoute(path: RoutePaths.splash, builder: (_, __) => const SplashPage()),
+      GoRoute(path: RoutePaths.signIn, builder: (_, __) => const SignInPage()),
       GoRoute(
           path: RoutePaths.setup,
           builder: (_, __) => const DevelopmentSetupPage()),
@@ -41,6 +44,9 @@ final appRouterProvider = Provider<GoRouter>((_) => GoRouter(
       GoRoute(
           path: RoutePaths.manualMeal,
           builder: (_, __) => const ManualMealPage()),
+      GoRoute(
+          path: RoutePaths.recipes,
+          builder: (_, __) => const RecipePickerPage()),
       GoRoute(path: RoutePaths.habits, builder: (_, __) => const HabitsPage()),
       GoRoute(
           path: RoutePaths.history,

@@ -261,11 +261,28 @@ class $SyncQueuesTable extends SyncQueues
   late final GeneratedColumn<String> entityId = GeneratedColumn<String>(
       'entity_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+      'user_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _payloadJsonMeta =
       const VerificationMeta('payloadJson');
   @override
   late final GeneratedColumn<String> payloadJson = GeneratedColumn<String>(
       'payload_json', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _idempotencyKeyMeta =
+      const VerificationMeta('idempotencyKey');
+  @override
+  late final GeneratedColumn<String> idempotencyKey = GeneratedColumn<String>(
+      'idempotency_key', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _dependencyGroupMeta =
+      const VerificationMeta('dependencyGroup');
+  @override
+  late final GeneratedColumn<String> dependencyGroup = GeneratedColumn<String>(
+      'dependency_group', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
@@ -292,6 +309,18 @@ class $SyncQueuesTable extends SyncQueues
   late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
       'updated_at', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _nextRetryAtMeta =
+      const VerificationMeta('nextRetryAt');
+  @override
+  late final GeneratedColumn<DateTime> nextRetryAt = GeneratedColumn<DateTime>(
+      'next_retry_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _serverVersionMeta =
+      const VerificationMeta('serverVersion');
+  @override
+  late final GeneratedColumn<String> serverVersion = GeneratedColumn<String>(
+      'server_version', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _lastErrorMeta =
       const VerificationMeta('lastError');
   @override
@@ -304,11 +333,16 @@ class $SyncQueuesTable extends SyncQueues
         operationType,
         entityType,
         entityId,
+        userId,
         payloadJson,
+        idempotencyKey,
+        dependencyGroup,
         status,
         retryCount,
         createdAt,
         updatedAt,
+        nextRetryAt,
+        serverVersion,
         lastError
       ];
   @override
@@ -348,6 +382,12 @@ class $SyncQueuesTable extends SyncQueues
     } else if (isInserting) {
       context.missing(_entityIdMeta);
     }
+    if (data.containsKey('user_id')) {
+      context.handle(_userIdMeta,
+          userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
     if (data.containsKey('payload_json')) {
       context.handle(
           _payloadJsonMeta,
@@ -355,6 +395,22 @@ class $SyncQueuesTable extends SyncQueues
               data['payload_json']!, _payloadJsonMeta));
     } else if (isInserting) {
       context.missing(_payloadJsonMeta);
+    }
+    if (data.containsKey('idempotency_key')) {
+      context.handle(
+          _idempotencyKeyMeta,
+          idempotencyKey.isAcceptableOrUnknown(
+              data['idempotency_key']!, _idempotencyKeyMeta));
+    } else if (isInserting) {
+      context.missing(_idempotencyKeyMeta);
+    }
+    if (data.containsKey('dependency_group')) {
+      context.handle(
+          _dependencyGroupMeta,
+          dependencyGroup.isAcceptableOrUnknown(
+              data['dependency_group']!, _dependencyGroupMeta));
+    } else if (isInserting) {
+      context.missing(_dependencyGroupMeta);
     }
     if (data.containsKey('status')) {
       context.handle(_statusMeta,
@@ -380,6 +436,18 @@ class $SyncQueuesTable extends SyncQueues
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    if (data.containsKey('next_retry_at')) {
+      context.handle(
+          _nextRetryAtMeta,
+          nextRetryAt.isAcceptableOrUnknown(
+              data['next_retry_at']!, _nextRetryAtMeta));
+    }
+    if (data.containsKey('server_version')) {
+      context.handle(
+          _serverVersionMeta,
+          serverVersion.isAcceptableOrUnknown(
+              data['server_version']!, _serverVersionMeta));
+    }
     if (data.containsKey('last_error')) {
       context.handle(_lastErrorMeta,
           lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta));
@@ -401,8 +469,14 @@ class $SyncQueuesTable extends SyncQueues
           .read(DriftSqlType.string, data['${effectivePrefix}entity_type'])!,
       entityId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}entity_id'])!,
+      userId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}user_id'])!,
       payloadJson: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}payload_json'])!,
+      idempotencyKey: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}idempotency_key'])!,
+      dependencyGroup: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}dependency_group'])!,
       status: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
       retryCount: attachedDatabase.typeMapping
@@ -411,6 +485,10 @@ class $SyncQueuesTable extends SyncQueues
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      nextRetryAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}next_retry_at']),
+      serverVersion: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}server_version']),
       lastError: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}last_error']),
     );
@@ -427,22 +505,32 @@ class SyncQueue extends DataClass implements Insertable<SyncQueue> {
   final String operationType;
   final String entityType;
   final String entityId;
+  final String userId;
   final String payloadJson;
+  final String idempotencyKey;
+  final String dependencyGroup;
   final String status;
   final int retryCount;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final DateTime? nextRetryAt;
+  final String? serverVersion;
   final String? lastError;
   const SyncQueue(
       {required this.id,
       required this.operationType,
       required this.entityType,
       required this.entityId,
+      required this.userId,
       required this.payloadJson,
+      required this.idempotencyKey,
+      required this.dependencyGroup,
       required this.status,
       required this.retryCount,
       required this.createdAt,
       required this.updatedAt,
+      this.nextRetryAt,
+      this.serverVersion,
       this.lastError});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -451,11 +539,20 @@ class SyncQueue extends DataClass implements Insertable<SyncQueue> {
     map['operation_type'] = Variable<String>(operationType);
     map['entity_type'] = Variable<String>(entityType);
     map['entity_id'] = Variable<String>(entityId);
+    map['user_id'] = Variable<String>(userId);
     map['payload_json'] = Variable<String>(payloadJson);
+    map['idempotency_key'] = Variable<String>(idempotencyKey);
+    map['dependency_group'] = Variable<String>(dependencyGroup);
     map['status'] = Variable<String>(status);
     map['retry_count'] = Variable<int>(retryCount);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || nextRetryAt != null) {
+      map['next_retry_at'] = Variable<DateTime>(nextRetryAt);
+    }
+    if (!nullToAbsent || serverVersion != null) {
+      map['server_version'] = Variable<String>(serverVersion);
+    }
     if (!nullToAbsent || lastError != null) {
       map['last_error'] = Variable<String>(lastError);
     }
@@ -468,11 +565,20 @@ class SyncQueue extends DataClass implements Insertable<SyncQueue> {
       operationType: Value(operationType),
       entityType: Value(entityType),
       entityId: Value(entityId),
+      userId: Value(userId),
       payloadJson: Value(payloadJson),
+      idempotencyKey: Value(idempotencyKey),
+      dependencyGroup: Value(dependencyGroup),
       status: Value(status),
       retryCount: Value(retryCount),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      nextRetryAt: nextRetryAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextRetryAt),
+      serverVersion: serverVersion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serverVersion),
       lastError: lastError == null && nullToAbsent
           ? const Value.absent()
           : Value(lastError),
@@ -487,11 +593,16 @@ class SyncQueue extends DataClass implements Insertable<SyncQueue> {
       operationType: serializer.fromJson<String>(json['operationType']),
       entityType: serializer.fromJson<String>(json['entityType']),
       entityId: serializer.fromJson<String>(json['entityId']),
+      userId: serializer.fromJson<String>(json['userId']),
       payloadJson: serializer.fromJson<String>(json['payloadJson']),
+      idempotencyKey: serializer.fromJson<String>(json['idempotencyKey']),
+      dependencyGroup: serializer.fromJson<String>(json['dependencyGroup']),
       status: serializer.fromJson<String>(json['status']),
       retryCount: serializer.fromJson<int>(json['retryCount']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      nextRetryAt: serializer.fromJson<DateTime?>(json['nextRetryAt']),
+      serverVersion: serializer.fromJson<String?>(json['serverVersion']),
       lastError: serializer.fromJson<String?>(json['lastError']),
     );
   }
@@ -503,11 +614,16 @@ class SyncQueue extends DataClass implements Insertable<SyncQueue> {
       'operationType': serializer.toJson<String>(operationType),
       'entityType': serializer.toJson<String>(entityType),
       'entityId': serializer.toJson<String>(entityId),
+      'userId': serializer.toJson<String>(userId),
       'payloadJson': serializer.toJson<String>(payloadJson),
+      'idempotencyKey': serializer.toJson<String>(idempotencyKey),
+      'dependencyGroup': serializer.toJson<String>(dependencyGroup),
       'status': serializer.toJson<String>(status),
       'retryCount': serializer.toJson<int>(retryCount),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'nextRetryAt': serializer.toJson<DateTime?>(nextRetryAt),
+      'serverVersion': serializer.toJson<String?>(serverVersion),
       'lastError': serializer.toJson<String?>(lastError),
     };
   }
@@ -517,22 +633,33 @@ class SyncQueue extends DataClass implements Insertable<SyncQueue> {
           String? operationType,
           String? entityType,
           String? entityId,
+          String? userId,
           String? payloadJson,
+          String? idempotencyKey,
+          String? dependencyGroup,
           String? status,
           int? retryCount,
           DateTime? createdAt,
           DateTime? updatedAt,
+          Value<DateTime?> nextRetryAt = const Value.absent(),
+          Value<String?> serverVersion = const Value.absent(),
           Value<String?> lastError = const Value.absent()}) =>
       SyncQueue(
         id: id ?? this.id,
         operationType: operationType ?? this.operationType,
         entityType: entityType ?? this.entityType,
         entityId: entityId ?? this.entityId,
+        userId: userId ?? this.userId,
         payloadJson: payloadJson ?? this.payloadJson,
+        idempotencyKey: idempotencyKey ?? this.idempotencyKey,
+        dependencyGroup: dependencyGroup ?? this.dependencyGroup,
         status: status ?? this.status,
         retryCount: retryCount ?? this.retryCount,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
+        nextRetryAt: nextRetryAt.present ? nextRetryAt.value : this.nextRetryAt,
+        serverVersion:
+            serverVersion.present ? serverVersion.value : this.serverVersion,
         lastError: lastError.present ? lastError.value : this.lastError,
       );
   SyncQueue copyWithCompanion(SyncQueuesCompanion data) {
@@ -544,13 +671,25 @@ class SyncQueue extends DataClass implements Insertable<SyncQueue> {
       entityType:
           data.entityType.present ? data.entityType.value : this.entityType,
       entityId: data.entityId.present ? data.entityId.value : this.entityId,
+      userId: data.userId.present ? data.userId.value : this.userId,
       payloadJson:
           data.payloadJson.present ? data.payloadJson.value : this.payloadJson,
+      idempotencyKey: data.idempotencyKey.present
+          ? data.idempotencyKey.value
+          : this.idempotencyKey,
+      dependencyGroup: data.dependencyGroup.present
+          ? data.dependencyGroup.value
+          : this.dependencyGroup,
       status: data.status.present ? data.status.value : this.status,
       retryCount:
           data.retryCount.present ? data.retryCount.value : this.retryCount,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      nextRetryAt:
+          data.nextRetryAt.present ? data.nextRetryAt.value : this.nextRetryAt,
+      serverVersion: data.serverVersion.present
+          ? data.serverVersion.value
+          : this.serverVersion,
       lastError: data.lastError.present ? data.lastError.value : this.lastError,
     );
   }
@@ -562,19 +701,38 @@ class SyncQueue extends DataClass implements Insertable<SyncQueue> {
           ..write('operationType: $operationType, ')
           ..write('entityType: $entityType, ')
           ..write('entityId: $entityId, ')
+          ..write('userId: $userId, ')
           ..write('payloadJson: $payloadJson, ')
+          ..write('idempotencyKey: $idempotencyKey, ')
+          ..write('dependencyGroup: $dependencyGroup, ')
           ..write('status: $status, ')
           ..write('retryCount: $retryCount, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('nextRetryAt: $nextRetryAt, ')
+          ..write('serverVersion: $serverVersion, ')
           ..write('lastError: $lastError')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, operationType, entityType, entityId,
-      payloadJson, status, retryCount, createdAt, updatedAt, lastError);
+  int get hashCode => Object.hash(
+      id,
+      operationType,
+      entityType,
+      entityId,
+      userId,
+      payloadJson,
+      idempotencyKey,
+      dependencyGroup,
+      status,
+      retryCount,
+      createdAt,
+      updatedAt,
+      nextRetryAt,
+      serverVersion,
+      lastError);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -583,11 +741,16 @@ class SyncQueue extends DataClass implements Insertable<SyncQueue> {
           other.operationType == this.operationType &&
           other.entityType == this.entityType &&
           other.entityId == this.entityId &&
+          other.userId == this.userId &&
           other.payloadJson == this.payloadJson &&
+          other.idempotencyKey == this.idempotencyKey &&
+          other.dependencyGroup == this.dependencyGroup &&
           other.status == this.status &&
           other.retryCount == this.retryCount &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
+          other.nextRetryAt == this.nextRetryAt &&
+          other.serverVersion == this.serverVersion &&
           other.lastError == this.lastError);
 }
 
@@ -596,11 +759,16 @@ class SyncQueuesCompanion extends UpdateCompanion<SyncQueue> {
   final Value<String> operationType;
   final Value<String> entityType;
   final Value<String> entityId;
+  final Value<String> userId;
   final Value<String> payloadJson;
+  final Value<String> idempotencyKey;
+  final Value<String> dependencyGroup;
   final Value<String> status;
   final Value<int> retryCount;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<DateTime?> nextRetryAt;
+  final Value<String?> serverVersion;
   final Value<String?> lastError;
   final Value<int> rowid;
   const SyncQueuesCompanion({
@@ -608,11 +776,16 @@ class SyncQueuesCompanion extends UpdateCompanion<SyncQueue> {
     this.operationType = const Value.absent(),
     this.entityType = const Value.absent(),
     this.entityId = const Value.absent(),
+    this.userId = const Value.absent(),
     this.payloadJson = const Value.absent(),
+    this.idempotencyKey = const Value.absent(),
+    this.dependencyGroup = const Value.absent(),
     this.status = const Value.absent(),
     this.retryCount = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.nextRetryAt = const Value.absent(),
+    this.serverVersion = const Value.absent(),
     this.lastError = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -621,18 +794,26 @@ class SyncQueuesCompanion extends UpdateCompanion<SyncQueue> {
     required String operationType,
     required String entityType,
     required String entityId,
+    required String userId,
     required String payloadJson,
+    required String idempotencyKey,
+    required String dependencyGroup,
     required String status,
     this.retryCount = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
+    this.nextRetryAt = const Value.absent(),
+    this.serverVersion = const Value.absent(),
     this.lastError = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         operationType = Value(operationType),
         entityType = Value(entityType),
         entityId = Value(entityId),
+        userId = Value(userId),
         payloadJson = Value(payloadJson),
+        idempotencyKey = Value(idempotencyKey),
+        dependencyGroup = Value(dependencyGroup),
         status = Value(status),
         createdAt = Value(createdAt),
         updatedAt = Value(updatedAt);
@@ -641,11 +822,16 @@ class SyncQueuesCompanion extends UpdateCompanion<SyncQueue> {
     Expression<String>? operationType,
     Expression<String>? entityType,
     Expression<String>? entityId,
+    Expression<String>? userId,
     Expression<String>? payloadJson,
+    Expression<String>? idempotencyKey,
+    Expression<String>? dependencyGroup,
     Expression<String>? status,
     Expression<int>? retryCount,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<DateTime>? nextRetryAt,
+    Expression<String>? serverVersion,
     Expression<String>? lastError,
     Expression<int>? rowid,
   }) {
@@ -654,11 +840,16 @@ class SyncQueuesCompanion extends UpdateCompanion<SyncQueue> {
       if (operationType != null) 'operation_type': operationType,
       if (entityType != null) 'entity_type': entityType,
       if (entityId != null) 'entity_id': entityId,
+      if (userId != null) 'user_id': userId,
       if (payloadJson != null) 'payload_json': payloadJson,
+      if (idempotencyKey != null) 'idempotency_key': idempotencyKey,
+      if (dependencyGroup != null) 'dependency_group': dependencyGroup,
       if (status != null) 'status': status,
       if (retryCount != null) 'retry_count': retryCount,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (nextRetryAt != null) 'next_retry_at': nextRetryAt,
+      if (serverVersion != null) 'server_version': serverVersion,
       if (lastError != null) 'last_error': lastError,
       if (rowid != null) 'rowid': rowid,
     });
@@ -669,11 +860,16 @@ class SyncQueuesCompanion extends UpdateCompanion<SyncQueue> {
       Value<String>? operationType,
       Value<String>? entityType,
       Value<String>? entityId,
+      Value<String>? userId,
       Value<String>? payloadJson,
+      Value<String>? idempotencyKey,
+      Value<String>? dependencyGroup,
       Value<String>? status,
       Value<int>? retryCount,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
+      Value<DateTime?>? nextRetryAt,
+      Value<String?>? serverVersion,
       Value<String?>? lastError,
       Value<int>? rowid}) {
     return SyncQueuesCompanion(
@@ -681,11 +877,16 @@ class SyncQueuesCompanion extends UpdateCompanion<SyncQueue> {
       operationType: operationType ?? this.operationType,
       entityType: entityType ?? this.entityType,
       entityId: entityId ?? this.entityId,
+      userId: userId ?? this.userId,
       payloadJson: payloadJson ?? this.payloadJson,
+      idempotencyKey: idempotencyKey ?? this.idempotencyKey,
+      dependencyGroup: dependencyGroup ?? this.dependencyGroup,
       status: status ?? this.status,
       retryCount: retryCount ?? this.retryCount,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      nextRetryAt: nextRetryAt ?? this.nextRetryAt,
+      serverVersion: serverVersion ?? this.serverVersion,
       lastError: lastError ?? this.lastError,
       rowid: rowid ?? this.rowid,
     );
@@ -706,8 +907,17 @@ class SyncQueuesCompanion extends UpdateCompanion<SyncQueue> {
     if (entityId.present) {
       map['entity_id'] = Variable<String>(entityId.value);
     }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
     if (payloadJson.present) {
       map['payload_json'] = Variable<String>(payloadJson.value);
+    }
+    if (idempotencyKey.present) {
+      map['idempotency_key'] = Variable<String>(idempotencyKey.value);
+    }
+    if (dependencyGroup.present) {
+      map['dependency_group'] = Variable<String>(dependencyGroup.value);
     }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
@@ -720,6 +930,12 @@ class SyncQueuesCompanion extends UpdateCompanion<SyncQueue> {
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (nextRetryAt.present) {
+      map['next_retry_at'] = Variable<DateTime>(nextRetryAt.value);
+    }
+    if (serverVersion.present) {
+      map['server_version'] = Variable<String>(serverVersion.value);
     }
     if (lastError.present) {
       map['last_error'] = Variable<String>(lastError.value);
@@ -737,11 +953,16 @@ class SyncQueuesCompanion extends UpdateCompanion<SyncQueue> {
           ..write('operationType: $operationType, ')
           ..write('entityType: $entityType, ')
           ..write('entityId: $entityId, ')
+          ..write('userId: $userId, ')
           ..write('payloadJson: $payloadJson, ')
+          ..write('idempotencyKey: $idempotencyKey, ')
+          ..write('dependencyGroup: $dependencyGroup, ')
           ..write('status: $status, ')
           ..write('retryCount: $retryCount, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('nextRetryAt: $nextRetryAt, ')
+          ..write('serverVersion: $serverVersion, ')
           ..write('lastError: $lastError, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -909,11 +1130,16 @@ typedef $$SyncQueuesTableCreateCompanionBuilder = SyncQueuesCompanion Function({
   required String operationType,
   required String entityType,
   required String entityId,
+  required String userId,
   required String payloadJson,
+  required String idempotencyKey,
+  required String dependencyGroup,
   required String status,
   Value<int> retryCount,
   required DateTime createdAt,
   required DateTime updatedAt,
+  Value<DateTime?> nextRetryAt,
+  Value<String?> serverVersion,
   Value<String?> lastError,
   Value<int> rowid,
 });
@@ -922,11 +1148,16 @@ typedef $$SyncQueuesTableUpdateCompanionBuilder = SyncQueuesCompanion Function({
   Value<String> operationType,
   Value<String> entityType,
   Value<String> entityId,
+  Value<String> userId,
   Value<String> payloadJson,
+  Value<String> idempotencyKey,
+  Value<String> dependencyGroup,
   Value<String> status,
   Value<int> retryCount,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<DateTime?> nextRetryAt,
+  Value<String?> serverVersion,
   Value<String?> lastError,
   Value<int> rowid,
 });
@@ -952,8 +1183,19 @@ class $$SyncQueuesTableFilterComposer
   ColumnFilters<String> get entityId => $composableBuilder(
       column: $table.entityId, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get userId => $composableBuilder(
+      column: $table.userId, builder: (column) => ColumnFilters(column));
+
   ColumnFilters<String> get payloadJson => $composableBuilder(
       column: $table.payloadJson, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get idempotencyKey => $composableBuilder(
+      column: $table.idempotencyKey,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get dependencyGroup => $composableBuilder(
+      column: $table.dependencyGroup,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get status => $composableBuilder(
       column: $table.status, builder: (column) => ColumnFilters(column));
@@ -966,6 +1208,12 @@ class $$SyncQueuesTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get nextRetryAt => $composableBuilder(
+      column: $table.nextRetryAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get serverVersion => $composableBuilder(
+      column: $table.serverVersion, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get lastError => $composableBuilder(
       column: $table.lastError, builder: (column) => ColumnFilters(column));
@@ -993,8 +1241,19 @@ class $$SyncQueuesTableOrderingComposer
   ColumnOrderings<String> get entityId => $composableBuilder(
       column: $table.entityId, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get userId => $composableBuilder(
+      column: $table.userId, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get payloadJson => $composableBuilder(
       column: $table.payloadJson, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get idempotencyKey => $composableBuilder(
+      column: $table.idempotencyKey,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get dependencyGroup => $composableBuilder(
+      column: $table.dependencyGroup,
+      builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get status => $composableBuilder(
       column: $table.status, builder: (column) => ColumnOrderings(column));
@@ -1007,6 +1266,13 @@ class $$SyncQueuesTableOrderingComposer
 
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get nextRetryAt => $composableBuilder(
+      column: $table.nextRetryAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get serverVersion => $composableBuilder(
+      column: $table.serverVersion,
+      builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get lastError => $composableBuilder(
       column: $table.lastError, builder: (column) => ColumnOrderings(column));
@@ -1033,8 +1299,17 @@ class $$SyncQueuesTableAnnotationComposer
   GeneratedColumn<String> get entityId =>
       $composableBuilder(column: $table.entityId, builder: (column) => column);
 
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
   GeneratedColumn<String> get payloadJson => $composableBuilder(
       column: $table.payloadJson, builder: (column) => column);
+
+  GeneratedColumn<String> get idempotencyKey => $composableBuilder(
+      column: $table.idempotencyKey, builder: (column) => column);
+
+  GeneratedColumn<String> get dependencyGroup => $composableBuilder(
+      column: $table.dependencyGroup, builder: (column) => column);
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
@@ -1047,6 +1322,12 @@ class $$SyncQueuesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get nextRetryAt => $composableBuilder(
+      column: $table.nextRetryAt, builder: (column) => column);
+
+  GeneratedColumn<String> get serverVersion => $composableBuilder(
+      column: $table.serverVersion, builder: (column) => column);
 
   GeneratedColumn<String> get lastError =>
       $composableBuilder(column: $table.lastError, builder: (column) => column);
@@ -1079,11 +1360,16 @@ class $$SyncQueuesTableTableManager extends RootTableManager<
             Value<String> operationType = const Value.absent(),
             Value<String> entityType = const Value.absent(),
             Value<String> entityId = const Value.absent(),
+            Value<String> userId = const Value.absent(),
             Value<String> payloadJson = const Value.absent(),
+            Value<String> idempotencyKey = const Value.absent(),
+            Value<String> dependencyGroup = const Value.absent(),
             Value<String> status = const Value.absent(),
             Value<int> retryCount = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<DateTime?> nextRetryAt = const Value.absent(),
+            Value<String?> serverVersion = const Value.absent(),
             Value<String?> lastError = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -1092,11 +1378,16 @@ class $$SyncQueuesTableTableManager extends RootTableManager<
             operationType: operationType,
             entityType: entityType,
             entityId: entityId,
+            userId: userId,
             payloadJson: payloadJson,
+            idempotencyKey: idempotencyKey,
+            dependencyGroup: dependencyGroup,
             status: status,
             retryCount: retryCount,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            nextRetryAt: nextRetryAt,
+            serverVersion: serverVersion,
             lastError: lastError,
             rowid: rowid,
           ),
@@ -1105,11 +1396,16 @@ class $$SyncQueuesTableTableManager extends RootTableManager<
             required String operationType,
             required String entityType,
             required String entityId,
+            required String userId,
             required String payloadJson,
+            required String idempotencyKey,
+            required String dependencyGroup,
             required String status,
             Value<int> retryCount = const Value.absent(),
             required DateTime createdAt,
             required DateTime updatedAt,
+            Value<DateTime?> nextRetryAt = const Value.absent(),
+            Value<String?> serverVersion = const Value.absent(),
             Value<String?> lastError = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -1118,11 +1414,16 @@ class $$SyncQueuesTableTableManager extends RootTableManager<
             operationType: operationType,
             entityType: entityType,
             entityId: entityId,
+            userId: userId,
             payloadJson: payloadJson,
+            idempotencyKey: idempotencyKey,
+            dependencyGroup: dependencyGroup,
             status: status,
             retryCount: retryCount,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            nextRetryAt: nextRetryAt,
+            serverVersion: serverVersion,
             lastError: lastError,
             rowid: rowid,
           ),

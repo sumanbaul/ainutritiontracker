@@ -15,6 +15,14 @@ using NutritionTracker.Application;
 using NutritionTracker.Infrastructure;
 using NutritionTracker.Infrastructure.Configuration;
 using NutritionTracker.Infrastructure.Foods;
+using NutritionTracker.Api.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.IdentityModel.Tokens;
+using NutritionTracker.Domain.Authentication;
+using System.Text;
+using System.Threading.RateLimiting;
+using NutritionTracker.Api.Privacy;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -38,6 +46,39 @@ builder.Services.AddProblemDetails(options =>
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+var authenticationOptions = builder.Configuration.GetSection(AuthenticationOptions.SectionName).Get<AuthenticationOptions>() ?? new AuthenticationOptions();
+if (builder.Environment.IsProduction())
+{
+    if (authenticationOptions.SigningKey.Length < 32 || authenticationOptions.SigningKey.Contains("change-me", StringComparison.OrdinalIgnoreCase))
+        throw new InvalidOperationException("Production Authentication:SigningKey must be a secret of at least 32 characters.");
+    if (!builder.Configuration.GetValue<bool>("Production:RequireHttps"))
+        throw new InvalidOperationException("Production requires HTTPS.");
+    if (builder.Configuration["MealAnalysis:Provider"] is null or "Local")
+        throw new InvalidOperationException("Production requires a private cloud meal-image storage provider.");
+}
+builder.Services.AddOptions<AuthenticationOptions>().BindConfiguration(AuthenticationOptions.SectionName).Validate(x => x.SigningKey.Length >= 32 && x.AccessTokenMinutes is >= 5 and <= 60 && x.RefreshTokenDays is >= 1 and <= 90, "Authentication configuration is invalid.").ValidateOnStart();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<IPasswordHasher<ApplicationUser>, PasswordHasher<ApplicationUser>>();
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+{
+    options.MapInboundClaims = false;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidIssuer = authenticationOptions.Issuer,
+        ValidateAudience = true,
+        ValidAudience = authenticationOptions.Audience,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authenticationOptions.SigningKey)),
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.FromSeconds(30),
+        NameClaimType = "sub"
+    };
+});
+builder.Services.AddAuthorization();
+builder.Services.AddRateLimiter(options => options.AddPolicy("authentication", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 })));
 
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
@@ -63,14 +104,20 @@ var app = builder.Build();
 
 if (builder.Configuration.GetValue<bool>("FoodSeed:Enabled"))
 {
-    await using var scope = app.Services.CreateAsyncScope();
-    await FoodDevelopmentSeeder.SeedAsync(scope.ServiceProvider);
-    await BengaliFoodSeeder.SeedAsync(scope.ServiceProvider);
-    await NutritionFoundationSeeder.SeedAsync(scope.ServiceProvider);
+    await FoodSeedSynchronization.Gate.WaitAsync();
+    try
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        await FoodDevelopmentSeeder.SeedAsync(scope.ServiceProvider);
+        await BengaliFoodSeeder.SeedAsync(scope.ServiceProvider);
+        await NutritionFoundationSeeder.SeedAsync(scope.ServiceProvider);
+    }
+    finally { FoodSeedSynchronization.Gate.Release(); }
 }
 
 app.UseGlobalExceptionHandling();
 app.UseSerilogRequestLogging();
+app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())
 {
@@ -83,6 +130,9 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
+app.UseAuthentication();
+app.UseMiddleware<UserIdentityMiddleware>();
+app.UseAuthorization();
 
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
@@ -98,6 +148,9 @@ app.MapFoodEndpoints();
 app.MapMealAnalysisEndpoints();
 app.MapMealManagementEndpoints();
 app.MapNutritionExpansionEndpoints();
+app.MapAuthenticationEndpoints();
+app.MapPrivacyEndpoints();
+app.MapMealVisionStatusEndpoints();
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 {
     app.MapMealVisionDevelopmentEndpoints();
@@ -107,3 +160,4 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 app.Run();
 
 public partial class Program;
+internal static class FoodSeedSynchronization { internal static SemaphoreSlim Gate { get; } = new(1, 1); }

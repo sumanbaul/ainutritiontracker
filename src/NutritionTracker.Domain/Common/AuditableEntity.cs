@@ -5,4 +5,5 @@ public abstract class AuditableEntity : BaseEntity
     public DateTime CreatedAtUtc { get; set; }
 
     public DateTime UpdatedAtUtc { get; set; }
+    public long Version { get; set; }
 }

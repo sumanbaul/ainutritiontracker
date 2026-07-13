@@ -15,6 +15,9 @@ App_Data/
 .env.*
 !.env.example
 appsettings.Local.json
+mobile/nutrition_tracker_app/android/key.properties
+*.jks
+*.keystore
 
 # Flutter (reserved for a later phase)
 .dart_tool/

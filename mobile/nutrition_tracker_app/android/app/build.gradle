@@ -23,9 +23,16 @@ if (flutterVersionName == null) {
     flutterVersionName = "1.0"
 }
 
+def keyProperties = new Properties()
+def keyPropertiesFile = rootProject.file("key.properties")
+if (keyPropertiesFile.exists()) {
+    keyPropertiesFile.withInputStream { keyProperties.load(it) }
+}
+
 android {
     namespace = "com.suman.nutrilens"
-    compileSdk = flutter.compileSdkVersion
+    // API 35/36 are corrupt on this workstation; the pinned SQLite plugin is API-34 compatible.
+    compileSdk = 34
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -44,11 +51,22 @@ android {
         versionName = flutterVersionName
     }
 
+    signingConfigs {
+        release {
+            if (keyPropertiesFile.exists()) {
+                storeFile file(keyProperties["storeFile"])
+                storePassword keyProperties["storePassword"]
+                keyAlias keyProperties["keyAlias"]
+                keyPassword keyProperties["keyPassword"]
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
+            if (keyPropertiesFile.exists()) signingConfig = signingConfigs.release
+            minifyEnabled true
+            shrinkResources true
         }
     }
 }

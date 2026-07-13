@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/networking/api_client.dart';
 import '../../core/storage/secure_storage_service.dart';
 
 final themeModeProvider = StateNotifierProvider<ThemeModeController, ThemeMode>(

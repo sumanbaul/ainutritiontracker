@@ -5,11 +5,10 @@ import 'dart:typed_data';
 
 import '../../app/config/app_config.dart';
 import '../../features/development_setup/domain/development_identity_service.dart';
+import '../../features/auth/data/auth_service.dart';
 import '../logging/app_logger.dart';
 import '../storage/secure_storage_service.dart';
 
-final secureStorageProvider =
-    Provider<SecureStorageService>((_) => FlutterSecureStorageService());
 final developmentIdentityProvider = Provider<IDevelopmentIdentityService>(
     (ref) => DevelopmentIdentityService(
         ref.watch(appConfigProvider), ref.watch(secureStorageProvider)));
@@ -17,6 +16,7 @@ final dioProvider = Provider<Dio>((ref) {
   final config = ref.watch(appConfigProvider);
   final logger = ref.watch(appLoggerProvider);
   final identity = ref.watch(developmentIdentityProvider);
+  final auth = ref.watch(authServiceProvider);
   final dio = Dio(BaseOptions(
       baseUrl: config.apiBaseUrl,
       connectTimeout: config.timeout,
@@ -34,12 +34,28 @@ final dioProvider = Provider<Dio>((ref) {
     }
     if (identity.isEnabled && userId != null && userId.isNotEmpty) {
       options.headers['X-Development-User-Id'] = userId;
+    } else {
+      final token = await auth.accessToken();
+      if (token != null) options.headers['Authorization'] = 'Bearer $token';
     }
     logger.info('${options.method} ${options.uri.path}');
     handler.next(options);
-  }, onError: (error, handler) {
+  }, onError: (error, handler) async {
     logger.info(
         'HTTP ${error.response?.statusCode ?? 'network'} ${error.requestOptions.uri.path}');
+    if (error.response?.statusCode == 401 &&
+        error.requestOptions.extra['retriedAfterRefresh'] != true &&
+        !error.requestOptions.path.startsWith('/api/auth/')) {
+      final token = await auth.refresh();
+      if (token != null) {
+        final request = error.requestOptions;
+        request.extra['retriedAfterRefresh'] = true;
+        request.headers['Authorization'] = 'Bearer $token';
+        try {
+          return handler.resolve(await dio.fetch<dynamic>(request));
+        } catch (_) {}
+      }
+    }
     handler.next(error);
   }));
   return dio;

@@ -5,13 +5,19 @@ import '../../../core/networking/api_client.dart';
 import '../../../core/networking/api_endpoints.dart';
 import '../../../core/result/result.dart';
 import '../domain/meal_review.dart';
+import '../../../core/sync/offline_sync_service.dart';
+import 'package:uuid/uuid.dart';
 
-final mealRepositoryProvider =
-    Provider((ref) => MealRepository(ref.watch(apiClientProvider)));
+final mealRepositoryProvider = Provider((ref) => MealRepository(
+    ref.watch(apiClientProvider),
+    ref.watch(offlineSyncProvider),
+    () => currentUserScope(ref)));
 
 class MealRepository {
-  MealRepository(this._api);
+  MealRepository(this._api, [this._sync, this._userScope]);
   final ApiClient _api;
+  final OfflineSyncService? _sync;
+  final Future<String?> Function()? _userScope;
   Future<Result<MealReview>> analyse(File image,
       {required DateTime consumedAtUtc,
       required String? cuisineHint,
@@ -45,14 +51,38 @@ class MealRepository {
   Future<Result<MealReview>> review(String mealId) async =>
       _reviewRequest(() => _api.get(ApiEndpoints.mealReview(mealId)));
   Future<Result<MealReview>> createManual(
-          {required String name,
-          required List<Map<String, dynamic>> items}) async =>
-      _reviewRequest(() => _api.post(ApiEndpoints.manualMeal, data: {
-            'name': name,
-            'mealType': 'Unknown',
-            'consumedAtUtc': DateTime.now().toUtc().toIso8601String(),
-            'items': items
-          }));
+      {required String name, required List<Map<String, dynamic>> items}) async {
+    final id = const Uuid().v4();
+    final payload = {
+      'name': name,
+      'mealType': 'Unknown',
+      'consumedAtUtc': DateTime.now().toUtc().toIso8601String(),
+      'items': items
+    };
+    try {
+      final response = await _api.post(ApiEndpoints.manualMeal, data: payload);
+      return Success(
+          MealReview.fromJson(Map<String, dynamic>.from(response.data as Map)));
+    } on DioException catch (error) {
+      final user = await _userScope?.call();
+      if (error.response == null && user != null && _sync != null) {
+        await _sync.enqueue(
+            userId: user,
+            operation: 'create',
+            entityType: 'manual-meal',
+            entityId: id,
+            payload: {
+              '_path': ApiEndpoints.manualMeal,
+              '_method': 'POST',
+              ...payload
+            });
+        return const Failure(AppFailure(
+            'Manual draft saved offline and will sync after reconnecting.'));
+      }
+      return Failure(_failure(error));
+    }
+  }
+
   Future<Result<MealReview>> updateItem(String mealId, MealReviewItem item,
           {required double grams,
           required String preparationMethod,

@@ -1,0 +1,48 @@
+name: CI
+on:
+  push:
+  pull_request:
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: nutrition_tracker_integration_tests
+          POSTGRES_USER: nutrition_tracker_tests
+          POSTGRES_PASSWORD: integration-only-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nutrition_tracker_tests -d nutrition_tracker_integration_tests"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      NUTRITION_TRACKER_INTEGRATION_CONNECTION: Host=localhost;Port=5432;Database=nutrition_tracker_integration_tests;Username=nutrition_tracker_tests;Password=integration-only-password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: 10.0.x }
+      - run: dotnet tool restore
+      - run: dotnet restore NutritionTracker.sln
+      - run: dotnet format NutritionTracker.sln --no-restore --verify-no-changes
+      - run: dotnet tool run dotnet-ef database update --project src/NutritionTracker.Infrastructure --startup-project src/NutritionTracker.Api
+      - run: dotnet build NutritionTracker.sln --no-restore --configuration Release
+      - run: dotnet test NutritionTracker.sln --no-build --configuration Release
+  flutter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable, cache: true }
+      - working-directory: mobile/nutrition_tracker_app
+        run: flutter pub get
+      - working-directory: mobile/nutrition_tracker_app
+        run: dart run build_runner build --delete-conflicting-outputs
+      - working-directory: mobile/nutrition_tracker_app
+        run: dart format --output=none --set-exit-if-changed .
+      - working-directory: mobile/nutrition_tracker_app
+        run: flutter analyze
+      - working-directory: mobile/nutrition_tracker_app
+        run: flutter test
+      - working-directory: mobile/nutrition_tracker_app
+        run: flutter build apk --debug

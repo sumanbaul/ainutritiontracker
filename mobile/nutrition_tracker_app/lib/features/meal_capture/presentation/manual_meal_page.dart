@@ -58,6 +58,11 @@ class _ManualMealPageState extends ConsumerState<ManualMealPage> {
         TextField(
             controller: _name,
             decoration: const InputDecoration(labelText: 'Meal name')),
+        ListTile(
+            leading: const Icon(Icons.menu_book_outlined),
+            title: const Text('Add from saved recipe'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(RoutePaths.recipes)),
         Row(children: [
           Expanded(
               child: TextField(

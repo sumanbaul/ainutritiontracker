@@ -3,6 +3,7 @@ using NutritionTracker.Domain.Common;
 using NutritionTracker.Domain.Profiles;
 using NutritionTracker.Domain.Foods;
 using NutritionTracker.Domain.Meals;
+using NutritionTracker.Domain.Authentication;
 
 namespace NutritionTracker.Infrastructure.Persistence;
 
@@ -31,6 +32,9 @@ public sealed class NutritionTrackerDbContext(DbContextOptions<NutritionTrackerD
     public DbSet<HydrationEntry> HydrationEntries => Set<HydrationEntry>();
     public DbSet<FastingWindow> FastingWindows => Set<FastingWindow>();
     public DbSet<ReminderPreference> ReminderPreferences => Set<ReminderPreference>();
+    public DbSet<ApplicationUser> ApplicationUsers => Set<ApplicationUser>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         ApplyAuditTimestamps();
@@ -46,6 +50,8 @@ public sealed class NutritionTrackerDbContext(DbContextOptions<NutritionTrackerD
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(NutritionTrackerDbContext).Assembly);
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes().Where(x => typeof(AuditableEntity).IsAssignableFrom(x.ClrType)))
+            modelBuilder.Entity(entityType.ClrType).Property<long>(nameof(AuditableEntity.Version)).IsConcurrencyToken();
         base.OnModelCreating(modelBuilder);
     }
 
@@ -59,10 +65,12 @@ public sealed class NutritionTrackerDbContext(DbContextOptions<NutritionTrackerD
             {
                 entry.Entity.CreatedAtUtc = utcNow;
                 entry.Entity.UpdatedAtUtc = utcNow;
+                entry.Entity.Version = 1;
             }
             else if (entry.State == EntityState.Modified)
             {
                 entry.Entity.UpdatedAtUtc = utcNow;
+                entry.Entity.Version++;
             }
         }
     }

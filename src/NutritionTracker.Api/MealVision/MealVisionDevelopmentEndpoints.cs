@@ -9,3 +9,17 @@ public static class MealVisionDevelopmentEndpoints
     { if (!context.Request.Headers.TryGetValue("X-Development-User-Id", out var user) || string.IsNullOrWhiteSpace(user)) return Results.Problem(statusCode: 401, title: "Development user identity is required."); byte[] bytes; try { bytes = Convert.FromBase64String(request.ImageBase64); } catch (FormatException) { return Results.Problem(statusCode: 400, title: "ImageBase64 is invalid."); } try { return Results.Ok(await service.AnalyseAsync(new(bytes, request.MimeType, request.FileName, null, null, request.Locale, request.PreferredLanguages ?? [], request.CuisineHints ?? [], request.DietPreference, request.MealContext, request.ClientCorrelationId, request.MockScenario), ct)); } catch (MealVisionImageValidationException x) { return Results.Problem(statusCode: x.StatusCode, title: x.Message); } catch (MealVisionTimeoutException x) { return Results.Problem(statusCode: 504, title: x.Message); } catch (MealVisionSchemaValidationException x) { return Results.Problem(statusCode: 502, title: "The provider returned an unusable structured response.", detail: x.Message); } catch (MealVisionProviderException x) { return Results.Problem(statusCode: 502, title: x.Message); } }
 }
 
+public static class MealVisionStatusEndpoints
+{
+    public static IEndpointRouteBuilder MapMealVisionStatusEndpoints(this IEndpointRouteBuilder routes)
+    {
+        routes.MapGet("/api/meal-vision/status", (IMealVisionProviderCatalog catalog, Microsoft.Extensions.Options.IOptions<NutritionTracker.Infrastructure.MealVision.MealVisionOptions> configured) =>
+        {
+            var selected = configured.Value.Provider.ToString();
+            var capabilities = catalog.GetCapabilities();
+            return Results.Ok(new { Provider = selected, IsConfigured = capabilities.Any(x => x.Id.Equals(selected, StringComparison.OrdinalIgnoreCase) && x.IsAvailable), PromptVersion = configured.Value.PromptVersion, SchemaVersion = configured.Value.SchemaVersion, Diagnostics = "Credentials, endpoints, and provider responses are never returned." });
+        });
+        return routes;
+    }
+}
+

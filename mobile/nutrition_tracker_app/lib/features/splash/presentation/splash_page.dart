@@ -12,6 +12,7 @@ import '../../../shared/presentation/glass_surface.dart';
 import '../../profile/data/profile_repository.dart';
 import '../../profile/domain/profile.dart';
 import '../domain/health_repository.dart';
+import '../../auth/data/auth_service.dart';
 
 class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
@@ -42,6 +43,11 @@ class _SplashPageState extends ConsumerState<SplashPage> {
     if (config.permitsDevelopmentSetup &&
         await identity.currentUserId() == null) {
       if (mounted) context.go(RoutePaths.setup);
+      return;
+    }
+    if (!config.permitsDevelopmentSetup &&
+        !await ref.read(authServiceProvider).hasSession()) {
+      if (mounted) context.go(RoutePaths.signIn);
       return;
     }
     final profile = await ref.read(profileRepositoryProvider).get();

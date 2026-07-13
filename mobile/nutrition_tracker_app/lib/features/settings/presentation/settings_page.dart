@@ -4,6 +4,11 @@ import '../../../app/theme/theme_mode_controller.dart';
 import '../../../app/config/app_config.dart';
 import '../../../core/networking/api_client.dart';
 import '../data/meal_vision_settings_repository.dart';
+import '../../auth/data/auth_service.dart';
+import '../../../core/storage/local_database.dart';
+import '../../../core/storage/secure_storage_service.dart';
+import 'package:go_router/go_router.dart';
+import '../../../app/router/route_paths.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -116,13 +121,78 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const ListTile(
               title: Text('Privacy'),
               subtitle: Text(
-                  'Privacy controls will expand with production authentication.'),
+                  'AI estimates are informational. Images are private and retained according to server policy.'),
               leading: Icon(Icons.privacy_tip_outlined)),
-          const ListTile(
-              enabled: false,
-              title: Text('Log out'),
-              subtitle: Text('Available after production authentication.'),
-              leading: Icon(Icons.logout)),
+          if (!config.permitsDevelopmentSetup)
+            ListTile(
+                title: const Text('Export my data'),
+                leading: const Icon(Icons.download_outlined),
+                onTap: () async {
+                  try {
+                    await ref
+                        .read(apiClientProvider)
+                        .get('/api/account/export');
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text(
+                              'Your data export was prepared successfully.')));
+                    }
+                  } catch (_) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Data export failed.')));
+                    }
+                  }
+                }),
+          if (!config.permitsDevelopmentSetup)
+            ListTile(
+                title: const Text('Delete account'),
+                subtitle: const Text(
+                    'Permanently removes account data and retained images.'),
+                leading: Icon(Icons.delete_forever,
+                    color: Theme.of(context).colorScheme.error),
+                onTap: () async {
+                  final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                                  title: const Text('Delete account?'),
+                                  content: const Text('This cannot be undone.'),
+                                  actions: [
+                                    TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                        child: const Text('Cancel')),
+                                    FilledButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                        child: const Text('Delete permanently'))
+                                  ])) ??
+                      false;
+                  if (!confirmed) return;
+                  final auth = ref.read(authServiceProvider);
+                  final user = await auth.userId();
+                  await ref.read(apiClientProvider).delete('/api/account');
+                  if (user != null) {
+                    await ref.read(localDatabaseProvider).clearUserData(user);
+                  }
+                  await auth.clear();
+                  if (context.mounted) context.go(RoutePaths.signIn);
+                }),
+          if (!config.permitsDevelopmentSetup)
+            ListTile(
+                title: const Text('Log out'),
+                subtitle: const Text(
+                    'Secure tokens and user-scoped queued changes are cleared.'),
+                leading: const Icon(Icons.logout),
+                onTap: () async {
+                  final auth = ref.read(authServiceProvider);
+                  final user = await auth.userId();
+                  await auth.signOut();
+                  if (user != null) {
+                    await ref.read(localDatabaseProvider).clearUserData(user);
+                  }
+                  if (context.mounted) context.go(RoutePaths.signIn);
+                }),
         ]));
   }
 }

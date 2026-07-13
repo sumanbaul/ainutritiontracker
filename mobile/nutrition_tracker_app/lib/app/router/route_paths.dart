@@ -1,5 +1,6 @@
 abstract final class RoutePaths {
   static const splash = '/splash',
+      signIn = '/sign-in',
       setup = '/development-setup',
       home = '/home',
       dashboard = '/dashboard',
@@ -8,6 +9,7 @@ abstract final class RoutePaths {
       onboarding = '/onboarding',
       capture = '/meal/capture',
       manualMeal = '/meal/manual',
+      recipes = '/recipes',
       habits = '/habits',
       history = '/history',
       weight = '/weight';

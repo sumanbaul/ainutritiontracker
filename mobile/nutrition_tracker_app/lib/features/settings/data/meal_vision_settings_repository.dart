@@ -4,11 +4,6 @@ import '../../../app/config/app_config.dart';
 import '../../../core/networking/api_client.dart';
 import '../../../core/storage/local_database.dart';
 
-final localDatabaseProvider = Provider<LocalDatabase>((ref) {
-  final database = LocalDatabase(openLocalDatabase());
-  ref.onDispose(database.close);
-  return database;
-});
 final mealVisionSettingsRepositoryProvider = Provider((ref) =>
     MealVisionSettingsRepository(ref.watch(apiClientProvider),
         ref.watch(localDatabaseProvider), ref.watch(appConfigProvider)));

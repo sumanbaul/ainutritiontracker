@@ -15,3 +15,6 @@
 | Production image storage, observability, deployment hardening | Planned |
 
 The next planned milestone is Phase 14: reliable offline replay, server idempotency/version checks, and conflict-resolution UX. Production authentication follows before any public multi-user release.
+# Phase 14
+
+Phase 14 adds production JWT authentication, ownership enforcement, secure token refresh, user-scoped Drift replay primitives, version conflicts, S3-compatible private images, recipe selection/logging, account export/deletion, PostgreSQL CI, and release signing templates. Remaining production operations are listed in `docs/phase-14.md`.

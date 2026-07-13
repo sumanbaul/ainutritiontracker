@@ -61,8 +61,10 @@ public static class DependencyInjection
         services.AddSingleton<IMealVisionResponseValidator, MealVisionResponseValidator>();
         services.AddSingleton<IMealVisionPromptBuilder>(sp => { var x = sp.GetRequiredService<IOptions<MealVisionOptions>>().Value; return new MealVisionPromptBuilder(x.PromptVersion, x.SchemaVersion); });
         services.AddScoped<IMealVisionAnalysisService, MealVisionAnalysisService>();
-        services.AddOptions<MealAnalysisOptions>().Bind(configuration.GetSection(MealAnalysisOptions.SectionName)).Validate(x => !string.IsNullOrWhiteSpace(x.LocalStorageRoot) && x.MaximumFileNameLength is >= 32 and <= 260, "MealAnalysis configuration is invalid.").ValidateOnStart();
-        services.AddSingleton<IMealImageStorage, LocalMealImageStorage>();
+        services.AddOptions<MealAnalysisOptions>().Bind(configuration.GetSection(MealAnalysisOptions.SectionName)).Validate(x => !string.IsNullOrWhiteSpace(x.Provider) && x.RetentionDays is >= 0 and <= 3650 && x.MaximumImageBytes is >= 1024 and <= 20_000_000 && x.AllowedMimeTypes.Length > 0 && x.MaximumFileNameLength is >= 32 and <= 260 && (!x.Provider.Equals("S3", StringComparison.OrdinalIgnoreCase) || (Uri.TryCreate(x.S3.Endpoint, UriKind.Absolute, out _) && !string.IsNullOrWhiteSpace(x.S3.Bucket) && !string.IsNullOrWhiteSpace(x.S3.AccessKey) && !string.IsNullOrWhiteSpace(x.S3.SecretKey))), "MealAnalysis configuration is invalid.").ValidateOnStart();
+        services.AddHttpClient("MealImageS3");
+        services.AddSingleton<LocalMealImageStorage>(); services.AddSingleton<S3MealImageStorage>();
+        services.AddSingleton<IMealImageStorage>(sp => sp.GetRequiredService<IOptions<MealAnalysisOptions>>().Value.Provider.Equals("S3", StringComparison.OrdinalIgnoreCase) ? sp.GetRequiredService<S3MealImageStorage>() : sp.GetRequiredService<LocalMealImageStorage>());
         services.AddScoped<IFoodMatcher, FoodMatcher>();
         services.AddScoped<IMealAnalysisPipeline, MealAnalysisPipeline>();
         services.AddScoped<IMealManagementService, MealManagementService>();

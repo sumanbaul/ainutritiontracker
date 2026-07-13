@@ -4,9 +4,13 @@ import 'package:uuid/uuid.dart';
 import '../../../core/networking/api_client.dart';
 import '../../../core/networking/api_endpoints.dart';
 import '../../../core/result/result.dart';
+import '../../../core/sync/offline_sync_service.dart';
+import 'package:dio/dio.dart';
 
-final habitRepositoryProvider =
-    Provider((ref) => HabitRepository(ref.watch(apiClientProvider)));
+final habitRepositoryProvider = Provider((ref) => HabitRepository(
+    ref.watch(apiClientProvider),
+    ref.watch(offlineSyncProvider),
+    () => currentUserScope(ref)));
 
 class HabitDay {
   const HabitDay(this.date, this.calories, this.meals);
@@ -89,8 +93,10 @@ class HabitReminder {
 }
 
 class HabitRepository {
-  HabitRepository(this._api);
+  HabitRepository(this._api, [this._sync, this._userScope]);
   final ApiClient _api;
+  final OfflineSyncService? _sync;
+  final Future<String?> Function()? _userScope;
 
   Future<Result<HabitSummary>> summary(String period) async {
     try {
@@ -105,27 +111,40 @@ class HabitRepository {
   }
 
   Future<Result<void>> addWater(double millilitres) async {
+    final operationId = const Uuid().v4();
+    final payload = {
+      'millilitres': millilitres,
+      'recordedAtUtc': DateTime.now().toUtc().toIso8601String(),
+      'clientOperationId': operationId,
+    };
     try {
-      await _api.post(ApiEndpoints.hydration, data: {
-        'millilitres': millilitres,
-        'recordedAtUtc': DateTime.now().toUtc().toIso8601String(),
-        'clientOperationId': const Uuid().v4(),
-      });
+      await _api.post(ApiEndpoints.hydration, data: payload);
       return const Success(null);
-    } catch (_) {
+    } on DioException catch (error) {
+      if (error.response == null &&
+          await _queue(
+              operationId, 'hydration', ApiEndpoints.hydration, payload)) {
+        return const Success(null);
+      }
       return const Failure(AppFailure('Water could not be logged.'));
     }
   }
 
   Future<Result<void>> addFast(DateTime start, DateTime end) async {
+    final operationId = const Uuid().v4();
+    final payload = {
+      'startedAtUtc': start.toUtc().toIso8601String(),
+      'endedAtUtc': end.toUtc().toIso8601String(),
+      'clientOperationId': operationId
+    };
     try {
-      await _api.post(ApiEndpoints.fasting, data: {
-        'startedAtUtc': start.toUtc().toIso8601String(),
-        'endedAtUtc': end.toUtc().toIso8601String(),
-        'clientOperationId': const Uuid().v4(),
-      });
+      await _api.post(ApiEndpoints.fasting, data: payload);
       return const Success(null);
-    } catch (_) {
+    } on DioException catch (error) {
+      if (error.response == null &&
+          await _queue(operationId, 'fasting', ApiEndpoints.fasting, payload)) {
+        return const Success(null);
+      }
       return const Failure(AppFailure('Fasting window could not be saved.'));
     }
   }
@@ -149,19 +168,54 @@ class HabitRepository {
     required String timezone,
     required bool enabled,
   }) async {
+    final reminderId = id ?? const Uuid().v4();
+    final operationId = const Uuid().v4();
+    final payload = {
+      'type': type,
+      'localTime': '$localTime:00',
+      'timezone': timezone,
+      'isEnabled': enabled,
+      'clientOperationId': operationId
+    };
     try {
-      final reminderId = id ?? const Uuid().v4();
-      final response = await _api.put(ApiEndpoints.reminder(reminderId), data: {
-        'type': type,
-        'localTime': '$localTime:00',
-        'timezone': timezone,
-        'isEnabled': enabled,
-        'clientOperationId': const Uuid().v4(),
-      });
+      final response =
+          await _api.put(ApiEndpoints.reminder(reminderId), data: payload);
       return Success(HabitReminder.fromJson(
           Map<String, dynamic>.from(response.data as Map)));
-    } catch (_) {
+    } on DioException catch (error) {
+      final user = await _userScope?.call();
+      if (error.response == null && user != null && _sync != null) {
+        await _sync.enqueue(
+            userId: user,
+            operation: 'upsert',
+            entityType: 'reminder',
+            entityId: reminderId,
+            payload: {
+              '_path': ApiEndpoints.reminder(reminderId),
+              '_method': 'PUT',
+              ...payload
+            });
+        return Success(HabitReminder(
+            id: reminderId,
+            type: type,
+            localTime: localTime,
+            timezone: timezone,
+            isEnabled: enabled));
+      }
       return const Failure(AppFailure('Reminder could not be saved.'));
     }
+  }
+
+  Future<bool> _queue(String id, String entity, String path,
+      Map<String, dynamic> payload) async {
+    final user = await _userScope?.call();
+    if (user == null || _sync == null) return false;
+    await _sync.enqueue(
+        userId: user,
+        operation: 'create',
+        entityType: entity,
+        entityId: id,
+        payload: {'_path': path, '_method': 'POST', ...payload});
+    return true;
   }
 }

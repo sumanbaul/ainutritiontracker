@@ -3,6 +3,8 @@
     <UserSecretsId>nutrition-tracker-api-4f0f6a60-f933-4f49-a461-8c1120d66473</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
     <ProjectReference Include="..\NutritionTracker.Application\NutritionTracker.Application.csproj" />
     <ProjectReference Include="..\NutritionTracker.Infrastructure\NutritionTracker.Infrastructure.csproj" />
   </ItemGroup>

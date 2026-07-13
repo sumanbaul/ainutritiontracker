@@ -1,0 +1,4 @@
+storeFile=C:\\secure\\path\\nutrilens-upload.jks
+storePassword=SET_OUTSIDE_SOURCE_CONTROL
+keyAlias=upload
+keyPassword=SET_OUTSIDE_SOURCE_CONTROL
