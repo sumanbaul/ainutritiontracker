@@ -96,8 +96,10 @@ class _TodayContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final calories = summary?.calories ?? 0;
-    final remaining =
-        (profile.target.calories - calories).clamp(0, double.infinity);
+    final calorieDelta = profile.target.calories - calories;
+    final calorieCaption = calorieDelta >= 0
+        ? '${calorieDelta.toStringAsFixed(0)} kcal left'
+        : '${(-calorieDelta).toStringAsFixed(0)} kcal over target';
     final hour = DateTime.now().hour;
     final greeting = hour < 12
         ? 'Good morning'
@@ -164,7 +166,7 @@ class _TodayContent extends StatelessWidget {
               value: calories,
               target: profile.target.calories,
               label: 'kcal eaten',
-              caption: '${remaining.toStringAsFixed(0)} kcal left',
+              caption: calorieCaption,
               child: Text(
                 '${summary?.mealCount ?? 0} confirmed meals today',
                 style: const TextStyle(color: AppColors.cyan),

@@ -18,3 +18,6 @@ The next planned milestone is Phase 14: reliable offline replay, server idempote
 # Phase 14
 
 Phase 14 adds production JWT authentication, ownership enforcement, secure token refresh, user-scoped Drift replay primitives, version conflicts, S3-compatible private images, recipe selection/logging, account export/deletion, PostgreSQL CI, and release signing templates. Remaining production operations are listed in `docs/phase-14.md`.
+# Phase 15 - MVP integrity and self-hosting
+
+Current work makes nutrition matching explicit, blocks confirmation of unresolved foods, and supports protected local image retention for self-hosted deployments. See [Phase 15](phase-15.md). Catalog expansion, deterministic candidate ranking, broader verified food sources, and clinician-review workflows remain the next data-quality milestone.

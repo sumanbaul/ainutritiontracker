@@ -53,8 +53,10 @@ if (builder.Environment.IsProduction())
         throw new InvalidOperationException("Production Authentication:SigningKey must be a secret of at least 32 characters.");
     if (!builder.Configuration.GetValue<bool>("Production:RequireHttps"))
         throw new InvalidOperationException("Production requires HTTPS.");
-    if (builder.Configuration["MealAnalysis:Provider"] is null or "Local")
-        throw new InvalidOperationException("Production requires a private cloud meal-image storage provider.");
+    if (builder.Configuration["MealAnalysis:Provider"] is null)
+        throw new InvalidOperationException("Production requires an explicit meal-image storage provider.");
+    if (string.Equals(builder.Configuration["MealAnalysis:Provider"], "Local", StringComparison.OrdinalIgnoreCase) && !builder.Configuration.GetValue<bool>("MealAnalysis:AllowLocalInProduction"))
+        throw new InvalidOperationException("Production Local image storage must be explicitly enabled for a protected self-hosted deployment.");
 }
 builder.Services.AddOptions<AuthenticationOptions>().BindConfiguration(AuthenticationOptions.SectionName).Validate(x => x.SigningKey.Length >= 32 && x.AccessTokenMinutes is >= 5 and <= 60 && x.RefreshTokenDays is >= 1 and <= 90, "Authentication configuration is invalid.").ValidateOnStart();
 builder.Services.AddHttpContextAccessor();

@@ -14,7 +14,7 @@ public sealed class MealImageStorageTests
         try
         {
             var storage = new LocalMealImageStorage(Options.Create(new MealAnalysisOptions { LocalStorageRoot = root, RetainImages = true }));
-            var key = await storage.SaveAsync(new byte[] { 0xFF, 0xD8, 0xFF }, "image/jpeg", CancellationToken.None);
+            var key = await storage.SaveAsync(new byte[] { 0xFF, 0xD8, 0xFF }, "image/jpeg", "image-storage-test-user", Guid.NewGuid(), CancellationToken.None);
 
             (await storage.ReadAsync(key, CancellationToken.None)).Should().Equal(0xFF, 0xD8, 0xFF);
             await storage.DeleteAsync(key, CancellationToken.None);

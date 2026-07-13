@@ -5,6 +5,8 @@ namespace NutritionTracker.Domain.Meals;
 public enum MealType { Breakfast, Lunch, Dinner, Snack, Beverage, Unknown }
 public enum MealStatus { PendingAnalysis, AwaitingReview, Confirmed, Failed, Deleted }
 public enum AnalysisRunStatus { Processing, Succeeded, Rejected, Failed }
+/// <summary>Describes whether an item has a safe nutrition-record basis. Zero never means unknown.</summary>
+public enum NutritionMatchState { MatchedVerified, MatchedApproximate, UserSelected, UserDefined, Unresolved, NotApplicable }
 
 public sealed class Meal : AuditableEntity
 {
@@ -17,6 +19,7 @@ public sealed class Meal : AuditableEntity
     public decimal TotalFatGrams { get; set; }
     public decimal TotalFibreGrams { get; set; }
     public decimal OverallConfidence { get; set; }
+    public bool HasIncompleteNutrition { get; set; }
     public MealStatus Status { get; set; }
     public ICollection<MealImage> Images { get; } = new List<MealImage>(); public ICollection<MealItem> Items { get; } = new List<MealItem>(); public ICollection<AiAnalysisRun> AnalysisRuns { get; } = new List<AiAnalysisRun>();
 }
@@ -37,14 +40,15 @@ public sealed class MealItem : AuditableEntity
     public PreparationMethod PreparationMethod { get; set; }
     public decimal? EstimatedQuantity { get; set; }
     public string EstimatedServingUnit { get; set; } = "unknown"; public decimal? EstimatedGrams { get; set; }
-    public decimal Calories { get; set; }
-    public decimal ProteinGrams { get; set; }
-    public decimal CarbohydrateGrams { get; set; }
-    public decimal FatGrams { get; set; }
-    public decimal FibreGrams { get; set; }
+    public decimal? Calories { get; set; }
+    public decimal? ProteinGrams { get; set; }
+    public decimal? CarbohydrateGrams { get; set; }
+    public decimal? FatGrams { get; set; }
+    public decimal? FibreGrams { get; set; }
     public decimal RecognitionConfidence { get; set; }
     public decimal PortionConfidence { get; set; }
     public decimal NutritionMatchConfidence { get; set; }
+    public NutritionMatchState NutritionMatchState { get; set; } = NutritionMatchState.Unresolved;
     public bool RequiresConfirmation { get; set; }
     public bool UserConfirmed { get; set; }
     public string? Warnings { get; set; }

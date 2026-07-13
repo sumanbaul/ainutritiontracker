@@ -8,6 +8,7 @@ class MealReview {
       required this.totalCarbs,
       required this.totalFat,
       required this.totalFibre,
+      required this.hasIncompleteNutrition,
       required this.items,
       required this.warnings,
       required this.provider,
@@ -17,6 +18,7 @@ class MealReview {
   final String? name;
   final String status;
   final double totalCalories, totalProtein, totalCarbs, totalFat, totalFibre;
+  final bool hasIncompleteNutrition;
   final List<MealReviewItem> items;
   final List<String> warnings;
   final String provider;
@@ -31,6 +33,7 @@ class MealReview {
       totalCarbs: _number(json['totalCarbohydrateGrams']),
       totalFat: _number(json['totalFatGrams']),
       totalFibre: _number(json['totalFibreGrams']),
+      hasIncompleteNutrition: json['hasIncompleteNutrition'] as bool? ?? false,
       items: (json['items'] as List)
           .map((x) =>
               MealReviewItem.fromJson(Map<String, dynamic>.from(x as Map)))
@@ -55,19 +58,16 @@ class MealReviewItem {
       required this.fibre,
       required this.recognitionConfidence,
       required this.nutritionMatchConfidence,
+      required this.nutritionMatchState,
       required this.preparationMethod,
       required this.requiresConfirmation,
       required this.warnings});
   final String id, detectedName, servingUnit, preparationMethod;
   final String? foodId;
   final double? grams;
-  final double calories,
-      protein,
-      carbs,
-      fat,
-      fibre,
-      recognitionConfidence,
-      nutritionMatchConfidence;
+  final double? calories, protein, carbs, fat, fibre;
+  final double recognitionConfidence, nutritionMatchConfidence;
+  final String nutritionMatchState;
   final bool requiresConfirmation;
   final List<String> warnings;
   factory MealReviewItem.fromJson(Map<String, dynamic> json) => MealReviewItem(
@@ -76,13 +76,15 @@ class MealReviewItem {
       foodId: json['foodId'] as String?,
       grams: _nullableNumber(json['estimatedGrams']),
       servingUnit: json['estimatedServingUnit'] as String,
-      calories: _number(json['calories']),
-      protein: _number(json['proteinGrams']),
-      carbs: _number(json['carbohydrateGrams']),
-      fat: _number(json['fatGrams']),
-      fibre: _number(json['fibreGrams']),
+      calories: _nullableNumber(json['calories']),
+      protein: _nullableNumber(json['proteinGrams']),
+      carbs: _nullableNumber(json['carbohydrateGrams']),
+      fat: _nullableNumber(json['fatGrams']),
+      fibre: _nullableNumber(json['fibreGrams']),
       recognitionConfidence: _number(json['recognitionConfidence']),
       nutritionMatchConfidence: _number(json['nutritionMatchConfidence']),
+      nutritionMatchState:
+          json['nutritionMatchState'] as String? ?? 'Unresolved',
       preparationMethod: json['preparationMethod'] as String,
       requiresConfirmation: json['requiresConfirmation'] as bool,
       warnings: (json['warnings'] as List? ?? const []).cast<String>());

@@ -219,6 +219,18 @@ class _MealReviewPageState extends ConsumerState<MealReviewPage> {
                                         .headlineMedium),
                                 const SizedBox(height: 14),
                                 _energy(context, meal),
+                                if (meal.hasIncompleteNutrition) ...[
+                                  const SizedBox(height: 12),
+                                  Container(
+                                      padding: const EdgeInsets.all(14),
+                                      decoration: BoxDecoration(
+                                          color: AppColors.warning
+                                              .withOpacity(.14),
+                                          borderRadius:
+                                              BorderRadius.circular(20)),
+                                      child: const Text(
+                                          'Nutrition is incomplete. Resolve every highlighted food before confirming.')),
+                                ],
                                 const SizedBox(height: 12),
                                 Wrap(spacing: 9, runSpacing: 9, children: [
                                   _macro(context, 'Carbs', meal.totalCarbs,
@@ -273,10 +285,13 @@ class _MealReviewPageState extends ConsumerState<MealReviewPage> {
                           child: SizedBox(
                             width: double.infinity,
                             child: FilledButton.icon(
-                              onPressed:
-                                  meal.status == 'Confirmed' || _confirming
-                                      ? null
-                                      : _confirm,
+                              onPressed: meal.status == 'Confirmed' ||
+                                      _confirming ||
+                                      meal.items.any((item) =>
+                                          item.nutritionMatchState ==
+                                          'Unresolved')
+                                  ? null
+                                  : _confirm,
                               icon: _confirming
                                   ? const SizedBox.square(
                                       dimension: 18,
@@ -288,7 +303,11 @@ class _MealReviewPageState extends ConsumerState<MealReviewPage> {
                                   ? 'Confirming meal'
                                   : meal.status == 'Confirmed'
                                       ? 'Meal confirmed'
-                                      : 'Confirm meal'),
+                                      : meal.items.any((item) =>
+                                              item.nutritionMatchState ==
+                                              'Unresolved')
+                                          ? 'Resolve ${meal.items.where((item) => item.nutritionMatchState == 'Unresolved').length} food item${meal.items.where((item) => item.nutritionMatchState == 'Unresolved').length == 1 ? '' : 's'} to confirm'
+                                          : 'Confirm meal'),
                             ),
                           ),
                         ),
@@ -301,7 +320,7 @@ class _MealReviewPageState extends ConsumerState<MealReviewPage> {
       title: Text(item.detectedName,
           style: const TextStyle(fontWeight: FontWeight.w700)),
       subtitle: Text(
-          '${item.grams?.toStringAsFixed(0) ?? '?'} g  •  ${item.calories.toStringAsFixed(0)} kcal\nRecognition ${(item.recognitionConfidence * 100).toStringAsFixed(0)}%  •  nutrition ${(item.nutritionMatchConfidence * 100).toStringAsFixed(0)}%'),
+          '${item.grams?.toStringAsFixed(0) ?? '?'} g  •  ${item.calories?.toStringAsFixed(0) ?? 'Nutrition unavailable'}${item.calories == null ? '' : ' kcal'}\n${item.nutritionMatchState == 'Unresolved' ? 'Resolve this food using Edit grams / food search' : 'Recognition ${(item.recognitionConfidence * 100).toStringAsFixed(0)}%  •  nutrition ${(item.nutritionMatchConfidence * 100).toStringAsFixed(0)}%'}'),
       trailing: PopupMenuButton<String>(
           onSelected: (choice) async {
             if (choice == 'edit') await _edit(item);

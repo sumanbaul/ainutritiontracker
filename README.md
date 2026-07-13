@@ -1,6 +1,6 @@
 # AI Nutrition Tracker
 
-The Android-first Flutter client is under `mobile/nutrition_tracker_app`. It supports authenticated nutrition tracking, manual/recipe meals, camera analysis, habits, progress, and private meal images. See [local development](docs/development.md), [Phase 14](docs/phase-14.md), [architecture](docs/architecture.md), [roadmap](docs/roadmap.md), and [status](docs/status.md).
+The Android-first Flutter client is under `mobile/nutrition_tracker_app`. It supports authenticated nutrition tracking, manual/recipe meals, camera analysis, habits, progress, and private meal images. See [local development](docs/development.md), [Phase 14](docs/phase-14.md), [Phase 15 integrity and self-hosting](docs/phase-15.md), [architecture](docs/architecture.md), [roadmap](docs/roadmap.md), and [status](docs/status.md).
 
 Backend foundation for a mobile-first nutrition tracker that estimates meal nutrition from photographs and requires user review before logging. Phases 2–7 provide the backend foundation, profile targets, food data, mock vision, draft analysis, confirmation, and dashboard APIs; Flutter and production AI are deferred.
 
@@ -68,7 +68,7 @@ The health-only test runs without PostgreSQL. Persistence integration tests run 
 ## Current limitations
 
 - Development may use `X-Development-User-Id`; production uses rotating JWT sessions and rejects the development identity path.
-- S3-compatible private image storage is available for production; deployment credentials and lifecycle policy remain operator supplied.
+- Protected local image storage is supported for explicitly enabled self-hosted production deployments; S3-compatible private storage remains optional and operator supplied.
 - OpenAI image analysis requires a server-side API key; nutrition remains sourced from the food database after user review.
 
 ## Phase 5 mock meal vision
