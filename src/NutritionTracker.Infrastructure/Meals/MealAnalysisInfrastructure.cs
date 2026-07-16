@@ -9,6 +9,7 @@ using NutritionTracker.Domain.Meals;
 using NutritionTracker.Infrastructure.Persistence;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 using System.Globalization;
 namespace NutritionTracker.Infrastructure.Meals;
 
@@ -102,7 +103,7 @@ public static class FoodMatchNameVariants
         return values.ToArray();
     }
 }
-public sealed class MealAnalysisPipeline(NutritionTrackerDbContext db, IMealVisionAnalysisService vision, IMealImageStorage storage, IFoodMatcher matcher, IFoodNutritionCalculator nutrition) : IMealAnalysisPipeline
+public sealed class MealAnalysisPipeline(NutritionTrackerDbContext db, IMealVisionAnalysisService vision, IMealImageStorage storage, IFoodMatcher matcher, IFoodNutritionCalculator nutrition, IFoodNameNormalizer normalizer, IFoodResolutionModel resolutionModel) : IMealAnalysisPipeline
 {
     public async Task<MealReviewResult> AnalyseAsync(MealAnalysisCommand command, CancellationToken ct)
     {
@@ -123,7 +124,10 @@ public sealed class MealAnalysisPipeline(NutritionTrackerDbContext db, IMealVisi
             var meal = new Meal { Id = mealId, UserId = command.UserId, Name = result.MealName, MealType = Enum.TryParse<MealType>(result.SuggestedMealType.ToString(), out var mealType) ? mealType : MealType.Unknown, ConsumedAtUtc = command.ConsumedAtUtc, Status = result.Status == AnalysisStatus.Rejected || !result.ContainsFood ? MealStatus.Failed : MealStatus.AwaitingReview };
             meal.Images.Add(new MealImage { StorageKey = storageKey, MimeType = command.MimeType, ByteLength = command.ImageBytes.Length, Sha256Hash = hash });
             meal.AnalysisRuns.Add(new AiAnalysisRun { UserId = command.UserId, Provider = result.Provider, Model = result.Model, PromptVersion = result.PromptVersion, SchemaVersion = result.SchemaVersion, InputImageHash = hash, Status = result.Status == AnalysisStatus.Rejected ? AnalysisRunStatus.Rejected : AnalysisRunStatus.Succeeded, ProcessingTimeMs = result.ProcessingDurationMs, ProviderRequestId = result.ProviderRequestId });
-            foreach (var item in result.Items) meal.Items.Add(await CreateItem(command.UserId, item, ct)); CalculateTotals(meal); db.Meals.Add(meal); await db.SaveChangesAsync(ct); return ToReview(meal);
+            db.Meals.Add(meal);
+            foreach (var item in result.Items)
+                meal.Items.Add(await CreateItem(command, meal, item, result.Provider, result.Model, ct));
+            CalculateTotals(meal); await db.SaveChangesAsync(ct); return ToReview(meal);
         }
         catch { await storage.DeleteAsync(storageKey, CancellationToken.None); throw; }
     }
@@ -137,7 +141,51 @@ public sealed class MealAnalysisPipeline(NutritionTrackerDbContext db, IMealVisi
         CalculateTotals(meal); return meal;
     }
     public async Task<MealReviewResult?> GetReviewAsync(string userId, Guid mealId, CancellationToken ct) { var meal = await db.Meals.AsNoTracking().AsSplitQuery().Include(x => x.Items).Include(x => x.AnalysisRuns).Include(x => x.Images).SingleOrDefaultAsync(x => x.Id == mealId && x.UserId == userId && x.Status != MealStatus.Deleted, ct); return meal is null ? null : ToReview(meal); }
-    private async Task<MealItem> CreateItem(string userId, MealVisionItem item, CancellationToken ct) { var match = await matcher.MatchAsync(userId, item.DetectedName, item.RegionalName, item.Alternatives.Where(x => x.Confidence >= .60m).Select(x => x.Name).ToList(), ct); ScaledNutritionResult? scaled = null; if (match is not null && item.EstimatedGrams > 0) scaled = nutrition.CalculateForGrams(match.Nutrition, item.EstimatedGrams.Value); var warnings = item.Warnings.ToList(); if (match is null) warnings.Add("Nutrition unavailable: resolve this food before confirmation."); else if (!match.CanonicalName.StartsWith("Cooked white rice", StringComparison.Ordinal)) warnings.Add("Regional dish nutrition is a curated estimate; recipe, oil, sugar, serving size, and vendor preparation can vary."); if (item.EstimatedGrams is null) warnings.Add("Portion weight requires confirmation."); return new MealItem { FoodId = match?.FoodId, DetectedName = item.DetectedName, RegionalName = item.RegionalName, CanonicalName = match?.CanonicalName, PreparationMethod = item.PreparationMethod, EstimatedQuantity = item.EstimatedQuantity, EstimatedServingUnit = item.EstimatedServingUnit.ToString().ToLowerInvariant(), EstimatedGrams = item.EstimatedGrams, Calories = scaled?.Calories, ProteinGrams = scaled?.Protein, CarbohydrateGrams = scaled?.Carbohydrates, FatGrams = scaled?.Fat, FibreGrams = scaled?.Fibre, RecognitionConfidence = item.RecognitionConfidence, PortionConfidence = item.PortionConfidence, NutritionMatchConfidence = match?.Confidence ?? 0, NutritionMatchState = match is null ? NutritionMatchState.Unresolved : match.Confidence >= .99m ? NutritionMatchState.MatchedVerified : NutritionMatchState.MatchedApproximate, RequiresConfirmation = item.RequiresConfirmation || match is null, Warnings = string.Join(" | ", warnings) }; }
+    private async Task<MealItem> CreateItem(MealAnalysisCommand command, Meal meal, MealVisionItem visionItem, string analysisProvider, string? analysisModel, CancellationToken ct)
+    {
+        var item = new MealItem { MealId = meal.Id, DetectedName = visionItem.DetectedName, RegionalName = visionItem.RegionalName, PreparationMethod = visionItem.PreparationMethod, EstimatedQuantity = visionItem.EstimatedQuantity, EstimatedServingUnit = visionItem.EstimatedServingUnit.ToString().ToLowerInvariant(), EstimatedGrams = visionItem.EstimatedGrams, RecognitionConfidence = visionItem.RecognitionConfidence, PortionConfidence = visionItem.PortionConfidence, RequiresConfirmation = visionItem.RequiresConfirmation };
+        var match = await matcher.MatchAsync(command.UserId, visionItem.DetectedName, visionItem.RegionalName, visionItem.Alternatives.Where(x => x.Confidence >= .60m).Select(x => x.Name).ToList(), ct);
+        if (match is not null && visionItem.EstimatedGrams > 0)
+        {
+            SetNutrition(item, match.FoodId, match.CanonicalName, nutrition.CalculateForGrams(match.Nutrition, visionItem.EstimatedGrams.Value), match.Confidence, match.Confidence >= .99m ? NutritionMatchState.MatchedVerified : NutritionMatchState.MatchedApproximate);
+            item.Warnings = "Catalog nutrition is a curated estimate; recipe and portion can vary.";
+            Audit(command.UserId, meal.Id, item, "CatalogMatch", analysisProvider, analysisModel, "Exact catalog name or alias match.");
+            return item;
+        }
+
+        if (visionItem.EstimatedGrams is not > 0)
+        {
+            item.NutritionMatchState = NutritionMatchState.Unresolved; item.RequiresConfirmation = true; item.Warnings = "Portion data is unavailable; nutrition could not be estimated.";
+            Audit(command.UserId, meal.Id, item, "AutoUnresolved", analysisProvider, analysisModel, "No usable portion data."); return item;
+        }
+
+        try
+        {
+            var query = visionItem.DetectedName.Trim(); var normalized = normalizer.Normalize(query);
+            var candidates = await db.Foods.Include(x => x.Aliases).Where(x => x.IsActive && (!x.IsUserCreated || x.OwnerUserId == command.UserId) && (x.NormalizedName.Contains(normalized) || x.Aliases.Any(a => a.NormalizedAlias.Contains(normalized)))).OrderByDescending(x => x.NormalizedName == normalized || x.Aliases.Any(a => a.NormalizedAlias == normalized)).ThenByDescending(x => x.IsVerified).Take(20).ToListAsync(ct);
+            if (candidates.Count > 0)
+            {
+                var ranked = await resolutionModel.RankAsync(command.ImageBytes, command.MimeType, query, candidates.Select(x => new ResolutionCandidate(x.Id, x.CanonicalName, x.Aliases.Select(a => a.Alias).Take(6).ToList())).ToList(), command.ProviderId, command.ModelId, ct);
+                var allowed = candidates.ToDictionary(x => x.Id); var safe = ranked.Suggestions.Where(x => allowed.ContainsKey(x.CandidateId)).DistinctBy(x => x.CandidateId).OrderByDescending(x => x.Confidence).ToList();
+                var lead = safe.FirstOrDefault(); var next = safe.Skip(1).FirstOrDefault();
+                if (lead is not null && lead.Confidence >= .80m && (next is null || lead.Confidence - next.Confidence >= .10m))
+                {
+                    var food = allowed[lead.CandidateId]; var values = new FoodNutritionValues(food.CaloriesPer100Grams, food.ProteinGramsPer100Grams, food.CarbohydrateGramsPer100Grams, food.FatGramsPer100Grams, food.FibreGramsPer100Grams, food.SugarGramsPer100Grams, food.SodiumMilligramsPer100Grams);
+                    SetNutrition(item, food.Id, food.CanonicalName, nutrition.CalculateForGrams(values, visionItem.EstimatedGrams.Value), lead.Confidence, NutritionMatchState.AiCatalogMatch);
+                    item.RequiresConfirmation = true; item.Warnings = "AI-ranked catalog match; review before confirming."; Audit(command.UserId, meal.Id, item, "AiCatalogMatch", ranked.Provider, ranked.Model, Clean(lead.Rationale)); return item;
+                }
+            }
+            var estimate = await resolutionModel.EstimateAsync(command.ImageBytes, command.MimeType, query, command.ProviderId, command.ModelId, ct); Validate(estimate.Nutrition);
+            var pending = new Food { CanonicalName = query, NormalizedName = normalized, DisplayName = query, Description = estimate.Description, Category = estimate.Category, Cuisine = estimate.Cuisine, PreparationMethod = estimate.PreparationMethod, FoodState = estimate.FoodState, CaloriesPer100Grams = estimate.Nutrition.Calories, ProteinGramsPer100Grams = estimate.Nutrition.Protein, CarbohydrateGramsPer100Grams = estimate.Nutrition.Carbohydrates, FatGramsPer100Grams = estimate.Nutrition.Fat, FibreGramsPer100Grams = estimate.Nutrition.Fibre, SugarGramsPer100Grams = estimate.Nutrition.Sugar, SodiumMilligramsPer100Grams = estimate.Nutrition.SodiumMilligrams, DataSource = "AI estimate; pending meal confirmation", SourceReference = estimate.Provider, SourceVersion = estimate.Model, IsVerified = false, IsUserCreated = true, OwnerUserId = command.UserId, IsActive = false, PendingMealId = meal.Id };
+            db.Foods.Add(pending); SetNutrition(item, pending.Id, pending.CanonicalName, nutrition.CalculateForGrams(estimate.Nutrition, visionItem.EstimatedGrams.Value), estimate.Confidence, NutritionMatchState.AiEstimate); item.RequiresConfirmation = true; item.Warnings = "AI estimate — review before confirming."; Audit(command.UserId, meal.Id, item, "AiEstimate", estimate.Provider, estimate.Model, string.Join("; ", estimate.Assumptions.Take(3))); return item;
+        }
+        catch (Exception ex) when (ex is MealVisionProviderException or HttpRequestException or JsonException or ArgumentException)
+        { item.NutritionMatchState = NutritionMatchState.Unresolved; item.RequiresConfirmation = true; item.Warnings = "Automatic nutrition resolution is unavailable; use a manual correction."; Audit(command.UserId, meal.Id, item, "AutoUnresolved", analysisProvider, analysisModel, ex.GetType().Name); return item; }
+    }
+    private void Audit(string userId, Guid mealId, MealItem item, string method, string? provider, string? model, string? rationale) => db.FoodResolutionEvents.Add(new FoodResolutionEvent { UserId = userId, MealId = mealId, MealItemId = item.Id, SelectedFoodId = item.FoodId, DetectedName = item.DetectedName, Grams = item.EstimatedGrams, Calories = item.Calories, ProteinGrams = item.ProteinGrams, CarbohydrateGrams = item.CarbohydrateGrams, FatGrams = item.FatGrams, FibreGrams = item.FibreGrams, Method = method, Confidence = item.NutritionMatchConfidence, Provider = provider, Model = model, Rationale = Clean(rationale) });
+    private static void SetNutrition(MealItem item, Guid foodId, string name, ScaledNutritionResult scaled, decimal confidence, NutritionMatchState state) { item.FoodId = foodId; item.CanonicalName = name; item.Calories = scaled.Calories; item.ProteinGrams = scaled.Protein; item.CarbohydrateGrams = scaled.Carbohydrates; item.FatGrams = scaled.Fat; item.FibreGrams = scaled.Fibre; item.NutritionMatchConfidence = decimal.Clamp(confidence, 0, 1); item.NutritionMatchState = state; }
+    private static string Clean(string? value) => new string((value ?? string.Empty).Where(c => !char.IsControl(c)).ToArray()).Trim()[..Math.Min(600, new string((value ?? string.Empty).Where(c => !char.IsControl(c)).ToArray()).Trim().Length)];
+    private static void Validate(FoodNutritionValues x) { if (x.Calories <= 0 || x.Calories > 1000 || x.Protein is < 0 or > 100 || x.Carbohydrates is < 0 or > 100 || x.Fat is < 0 or > 100 || x.Fibre is < 0 or > 100 || x.Sugar is < 0 or > 100 || x.SodiumMilligrams is < 0 or > 100000) throw new ArgumentException("AI nutrition values are outside supported ranges."); }
     private static void CalculateTotals(Meal meal) { meal.HasIncompleteNutrition = meal.Items.Any(x => x.Calories is null || x.NutritionMatchState == NutritionMatchState.Unresolved); meal.TotalCalories = meal.Items.Sum(x => x.Calories ?? 0); meal.TotalProteinGrams = meal.Items.Sum(x => x.ProteinGrams ?? 0); meal.TotalCarbohydrateGrams = meal.Items.Sum(x => x.CarbohydrateGrams ?? 0); meal.TotalFatGrams = meal.Items.Sum(x => x.FatGrams ?? 0); meal.TotalFibreGrams = meal.Items.Sum(x => x.FibreGrams ?? 0); meal.OverallConfidence = meal.Items.Count == 0 ? 0 : decimal.Round(meal.Items.Average(x => (x.RecognitionConfidence + x.PortionConfidence + x.NutritionMatchConfidence) / 3m), 3); }
     private static MealReviewResult ToReview(Meal meal) { var run = meal.AnalysisRuns.OrderByDescending(x => x.CreatedAtUtc).First(); var items = meal.Items.Select(x => new MealItemReview(x.Id, x.FoodId, x.DetectedName, x.RegionalName, x.CanonicalName, x.PreparationMethod, x.EstimatedQuantity, x.EstimatedServingUnit, x.EstimatedGrams, x.Calories, x.ProteinGrams, x.CarbohydrateGrams, x.FatGrams, x.FibreGrams, x.RecognitionConfidence, x.PortionConfidence, x.NutritionMatchConfidence, x.NutritionMatchState, x.RequiresConfirmation, string.IsNullOrWhiteSpace(x.Warnings) ? [] : x.Warnings.Split(" | "))).ToList(); return new(meal.Id, meal.Name, meal.MealType, meal.ConsumedAtUtc, meal.Status, meal.TotalCalories, meal.TotalProteinGrams, meal.TotalCarbohydrateGrams, meal.TotalFatGrams, meal.TotalFibreGrams, meal.HasIncompleteNutrition, meal.OverallConfidence, items, items.SelectMany(x => x.Warnings).Distinct().ToList(), run.Provider, run.Model, run.PromptVersion, run.SchemaVersion, meal.Images.Count > 0); }
 }

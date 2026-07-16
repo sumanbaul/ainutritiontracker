@@ -154,7 +154,7 @@ class _TodayContent extends StatelessWidget {
       child: RefreshIndicator(
         onRefresh: onRefresh,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 116),
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 148),
           children: [
             Row(children: [
               Expanded(
@@ -229,11 +229,14 @@ class _TodayContent extends StatelessWidget {
             ),
             if (meals.isNotEmpty) ...[
               const SizedBox(height: 26),
-              const NutritionSectionTitle('Recent meals',
-                  subtitle: 'Tap a meal to see its details'),
+              NutritionSectionTitle('Recent meals',
+                  subtitle: 'Tap a meal to see its details',
+                  action: TextButton(
+                      onPressed: () => context.go(RoutePaths.history),
+                      child: const Text('See all'))),
               const SizedBox(height: 12),
               SizedBox(
-                height: 220,
+                height: 172,
                 child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: meals.length,
@@ -246,32 +249,44 @@ class _TodayContent extends StatelessWidget {
             const NutritionSectionTitle('Today’s nutrition',
                 subtitle: 'Live totals from confirmed meals'),
             const SizedBox(height: 12),
-            Wrap(spacing: 12, runSpacing: 12, children: [
-              NutritionMetricCard(
-                  label: 'Protein',
-                  value: summary?.protein ?? 0,
-                  target: profile.target.protein,
-                  color: AppColors.pink,
-                  icon: Icons.fitness_center),
-              NutritionMetricCard(
-                  label: 'Carbs',
-                  value: summary?.carbs ?? 0,
-                  target: profile.target.carbohydrates,
-                  color: AppColors.warning,
-                  icon: Icons.grain),
-              NutritionMetricCard(
-                  label: 'Fat',
-                  value: summary?.fat ?? 0,
-                  target: profile.target.fat,
-                  color: AppColors.cyan,
-                  icon: Icons.water_drop_outlined),
-              NutritionMetricCard(
-                  label: 'Fibre',
-                  value: summary?.fibre ?? 0,
-                  target: profile.target.fibre,
-                  color: AppColors.green,
-                  icon: Icons.eco_outlined),
-            ]),
+            GridView.count(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.18,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                NutritionMetricCard(
+                    expand: true,
+                    label: 'Protein',
+                    value: summary?.protein ?? 0,
+                    target: profile.target.protein,
+                    color: AppColors.pink,
+                    icon: Icons.fitness_center),
+                NutritionMetricCard(
+                    expand: true,
+                    label: 'Carbs',
+                    value: summary?.carbs ?? 0,
+                    target: profile.target.carbohydrates,
+                    color: AppColors.warning,
+                    icon: Icons.grain),
+                NutritionMetricCard(
+                    expand: true,
+                    label: 'Fat',
+                    value: summary?.fat ?? 0,
+                    target: profile.target.fat,
+                    color: AppColors.cyan,
+                    icon: Icons.water_drop_outlined),
+                NutritionMetricCard(
+                    expand: true,
+                    label: 'Fibre',
+                    value: summary?.fibre ?? 0,
+                    target: profile.target.fibre,
+                    color: AppColors.green,
+                    icon: Icons.eco_outlined),
+              ],
+            ),
             const SizedBox(height: 26),
             const NutritionSectionTitle('Quick actions'),
             const SizedBox(height: 12),
@@ -337,12 +352,12 @@ class _MealFeatureCard extends StatelessWidget {
   Widget build(BuildContext context) => Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(24),
           onTap: () => context.push(RoutePaths.review(meal.id)),
           child: SizedBox(
-            width: 230,
+            width: 154,
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(30),
+              borderRadius: BorderRadius.circular(24),
               child: Stack(fit: StackFit.expand, children: [
                 MealPhoto(mealId: meal.id, hasImage: meal.hasImage, hero: true),
                 const DecoratedBox(
@@ -352,27 +367,28 @@ class _MealFeatureCard extends StatelessWidget {
                             end: Alignment.bottomCenter,
                             colors: [Colors.transparent, Color(0xDD000000)]))),
                 Positioned(
-                    left: 16,
-                    right: 16,
-                    top: 15,
+                    left: 11,
+                    right: 11,
+                    top: 11,
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
+                            horizontal: 8, vertical: 5),
                         decoration: BoxDecoration(
                             color: Colors.white.withOpacity(.22),
                             borderRadius: BorderRadius.circular(16)),
                         child: Text('${meal.calories.toStringAsFixed(0)} kcal',
                             style: const TextStyle(
                                 color: Colors.white,
-                                fontWeight: FontWeight.w700)),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12)),
                       ),
                     )),
                 Positioned(
-                    left: 17,
-                    right: 17,
-                    bottom: 17,
+                    left: 12,
+                    right: 12,
+                    bottom: 12,
                     child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -381,7 +397,7 @@ class _MealFeatureCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: Theme.of(context)
                                   .textTheme
-                                  .titleLarge
+                                  .titleMedium
                                   ?.copyWith(color: Colors.white)),
                           Text(
                               '${meal.type} • ${meal.protein.toStringAsFixed(0)}g protein',

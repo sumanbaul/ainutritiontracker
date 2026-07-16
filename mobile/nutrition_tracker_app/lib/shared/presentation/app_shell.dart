@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/app_theme.dart';
@@ -19,6 +20,7 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> {
   int _index = 0;
+  bool _compactNavigation = false;
   final _pages = const [
     TodayPage(),
     CapturePreviewPage(),
@@ -32,29 +34,55 @@ class _AppShellState extends ConsumerState<AppShell> {
     final reduceMotion = MediaQuery.of(context).disableAnimations;
     return Scaffold(
       extendBody: true,
-      body: Stack(children: [
-        AnimatedSwitcher(
-          duration:
-              reduceMotion ? Duration.zero : const Duration(milliseconds: 420),
-          switchInCurve: Curves.easeOutCubic,
-          switchOutCurve: Curves.easeInCubic,
-          transitionBuilder: (child, animation) => FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: Tween(begin: const Offset(.025, .015), end: Offset.zero)
-                  .animate(CurvedAnimation(
-                      parent: animation, curve: Curves.easeOut)),
-              child: child,
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          if (notification.metrics.axis != Axis.vertical ||
+              notification is! UserScrollNotification) return false;
+          final compact = switch (notification.direction) {
+            ScrollDirection.reverse => true,
+            ScrollDirection.forward => false,
+            _ => _compactNavigation,
+          };
+          if (compact != _compactNavigation) {
+            setState(() => _compactNavigation = compact);
+          }
+          return false;
+        },
+        child: Stack(children: [
+          AnimatedSwitcher(
+            duration: reduceMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 420),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position:
+                    Tween(begin: const Offset(.025, .015), end: Offset.zero)
+                        .animate(CurvedAnimation(
+                            parent: animation, curve: Curves.easeOut)),
+                child: child,
+              ),
+            ),
+            child: KeyedSubtree(key: ValueKey(_index), child: _pages[_index]),
+          ),
+          if (ref.watch(syncStatusProvider).valueOrNull case final status?)
+            _SyncBanner(status: status),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: GlassNavigationBar(
+              index: _index,
+              compact: _compactNavigation,
+              onChanged: (index) => setState(() {
+                _index = index;
+                _compactNavigation = false;
+              }),
             ),
           ),
-          child: KeyedSubtree(key: ValueKey(_index), child: _pages[_index]),
-        ),
-        if (ref.watch(syncStatusProvider).valueOrNull case final status?)
-          _SyncBanner(status: status),
-      ]),
-      bottomNavigationBar: GlassNavigationBar(
-        index: _index,
-        onChanged: (index) => setState(() => _index = index),
+        ]),
       ),
     );
   }
@@ -92,9 +120,13 @@ class _SyncBanner extends StatelessWidget {
 
 class GlassNavigationBar extends StatelessWidget {
   const GlassNavigationBar(
-      {super.key, required this.index, required this.onChanged});
+      {super.key,
+      required this.index,
+      required this.onChanged,
+      this.compact = false});
   final int index;
   final ValueChanged<int> onChanged;
+  final bool compact;
   static const items = [
     (Icons.home_outlined, Icons.home_rounded, 'Home'),
     (Icons.document_scanner_outlined, Icons.document_scanner, 'Scan'),
@@ -108,89 +140,109 @@ class GlassNavigationBar extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final reduce = MediaQuery.of(context).disableAnimations;
     final colors = AppSemanticColors.of(context);
+    final duration = reduce ? Duration.zero : const Duration(milliseconds: 320);
+    final height = compact ? 58.0 : 70.0;
+    final radius = height / 2;
     return SafeArea(
-      minimum: const EdgeInsets.fromLTRB(18, 0, 18, 12),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(34),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(dark ? .26 : .13),
-                blurRadius: 30,
-                offset: const Offset(0, 12)),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(34),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-            child: Container(
-              height: 70,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: dark
-                      ? [
-                          Colors.white.withOpacity(.12),
-                          colors.glassSurface,
-                        ]
-                      : [
-                          Colors.white.withOpacity(.52),
-                          const Color(0xffEDE9FF).withOpacity(.24),
-                        ],
-                ),
-                borderRadius: BorderRadius.circular(34),
-                border: Border.all(color: colors.glassBorder),
-              ),
-              child: Row(
-                children: List.generate(items.length, (itemIndex) {
-                  final item = items[itemIndex];
-                  final selected = itemIndex == index;
-                  final capture = itemIndex == 1;
-                  return Expanded(
-                    child: Semantics(
-                      selected: selected,
-                      button: true,
-                      label: item.$3,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(26),
-                        onTap: () => onChanged(itemIndex),
-                        child: AnimatedContainer(
-                          duration: reduce
-                              ? Duration.zero
-                              : const Duration(milliseconds: 360),
-                          curve: Curves.easeOutBack,
-                          margin: const EdgeInsets.symmetric(vertical: 9),
+      minimum: EdgeInsets.fromLTRB(18, 0, 18, compact ? 8 : 12),
+      child: LayoutBuilder(builder: (context, constraints) {
+        return Align(
+          alignment: Alignment.center,
+          child: AnimatedContainer(
+            duration: duration,
+            curve: Curves.easeOutCubic,
+            width: compact ? constraints.maxWidth * .86 : constraints.maxWidth,
+            height: height,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(radius),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(dark ? .30 : .15),
+                    blurRadius: compact ? 22 : 30,
+                    offset: const Offset(0, 10)),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(radius),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: dark
+                          ? [Colors.white.withOpacity(.12), colors.glassSurface]
+                          : [
+                              Colors.white.withOpacity(.52),
+                              const Color(0xffEDE9FF).withOpacity(.24),
+                            ],
+                    ),
+                    borderRadius: BorderRadius.circular(radius),
+                    border: Border.all(color: colors.glassBorder),
+                  ),
+                  child: LayoutBuilder(builder: (context, inner) {
+                    final cellWidth = inner.maxWidth / items.length;
+                    return Stack(children: [
+                      AnimatedPositioned(
+                        duration: duration,
+                        curve: Curves.easeOutCubic,
+                        left: index * cellWidth + 5,
+                        top: compact ? 6 : 8,
+                        width: cellWidth - 10,
+                        height: height - (compact ? 12 : 16),
+                        child: DecoratedBox(
                           decoration: BoxDecoration(
-                            color: selected
-                                ? (capture
-                                    ? colors.actionBackground
-                                    : colors.actionBackground)
-                                : capture
-                                    ? colors.foreground.withOpacity(.08)
-                                    : Colors.transparent,
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: Icon(
-                            selected ? item.$2 : item.$1,
-                            color: selected
-                                ? colors.actionForeground
-                                : (dark
-                                    ? AppColors.secondaryText
-                                    : AppColors.softInk),
+                            color: dark
+                                ? Colors.white.withOpacity(.18)
+                                : colors.actionBackground,
+                            borderRadius: BorderRadius.circular(radius),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }),
+                      Row(
+                        children: List.generate(items.length, (itemIndex) {
+                          final item = items[itemIndex];
+                          final selected = itemIndex == index;
+                          return Expanded(
+                            child: Semantics(
+                              selected: selected,
+                              button: true,
+                              label: item.$3,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(radius),
+                                onTap: () => onChanged(itemIndex),
+                                child: Center(
+                                  child: AnimatedSwitcher(
+                                    duration: duration,
+                                    transitionBuilder: (child, animation) =>
+                                        ScaleTransition(
+                                            scale: animation, child: child),
+                                    child: Icon(selected ? item.$2 : item.$1,
+                                        key: ValueKey('$itemIndex-$selected'),
+                                        size: compact ? 24 : 27,
+                                        color: selected
+                                            ? (dark
+                                                ? Colors.white
+                                                : colors.actionForeground)
+                                            : (dark
+                                                ? AppColors.secondaryText
+                                                : AppColors.softInk)),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    ]);
+                  }),
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 }

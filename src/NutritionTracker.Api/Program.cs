@@ -45,6 +45,7 @@ builder.Services.AddProblemDetails(options =>
 });
 
 builder.Services.AddApplication();
+builder.Services.AddDataProtection();
 builder.Services.AddInfrastructure(builder.Configuration);
 var authenticationOptions = builder.Configuration.GetSection(AuthenticationOptions.SectionName).Get<AuthenticationOptions>() ?? new AuthenticationOptions();
 if (builder.Environment.IsProduction())

@@ -4,6 +4,14 @@ The Android-first Flutter client is under `mobile/nutrition_tracker_app`. It sup
 
 The focused timestamp-based [fasting counter](docs/fasting-counter.md) supports an active user-scoped session and completed-fast history. It is informational only, not medical advice.
 
+## Safe food resolution and reviewed AI estimates
+
+Meal analysis now resolves usable detections automatically and conservatively. It first uses exact catalog matching; otherwise AI ranks only a server-filtered shortlist whose names or aliases match the detected text. A result needs a high confidence and a clear lead over the next candidate, so `Pickle` cannot become `Bengali fish fry`. If no safe match exists, the system creates a private inactive AI estimate for the draft item, labels it for review, and activates it only when the user confirms the meal. Manual search, food changes, grams edits, and removal remain overrides; estimates are not guaranteed to be correct.
+
+When a draft item has unavailable nutrition, the review sheet first searches the user-visible food catalog using the current search text. AI can rank only those matching catalog candidates; it cannot substitute a prominent but unrelated dish from the meal image. For example, searching `Pickle` cannot return `Bengali fish fry`, and a broad `Curry` search is restricted to catalog names and aliases containing `curry`.
+
+If no safe catalog candidate exists, the user can explicitly request an AI nutrition estimate for the exact search text. The app displays the per-100-g values, assumptions, preparation, and an `AI estimate` warning for review. Nothing is saved automatically. Confirmation uses a short-lived, user/meal/item-bound token, creates an unverified private custom food labelled `AI estimate; user reviewed`, and updates the draft meal atomically. These private estimates appear only in their owner’s future searches until separately curated into the shared catalog.
+
 NutriLens is a mobile-first nutrition tracker that estimates meal nutrition from photographs and requires user review before logging. The MVP includes Flutter capture/review, server-side AI provider integration, PostgreSQL persistence, production JWT support, Local self-hosted image retention, offline replay primitives, habits, and progress summaries.
 
 ## Architecture
@@ -70,7 +78,7 @@ The health-only test runs without PostgreSQL. Persistence integration tests run 
 
 - Development may use `X-Development-User-Id`; production uses rotating JWT sessions and rejects the development identity path.
 - Protected local image storage is supported for explicitly enabled self-hosted production deployments; S3-compatible private storage remains optional and operator supplied.
-- OpenAI image analysis requires a server-side API key; nutrition remains sourced from the food database after user review.
+- OpenAI image analysis requires a server-side API key. Catalog nutrition remains authoritative when a safe match exists; AI nutrition fallback is a clearly labelled, explicitly reviewed, user-private estimate.
 
 ## Phase 5 mock meal vision
 

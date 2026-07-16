@@ -16,6 +16,10 @@ abstract final class ApiEndpoints {
   static String mealImage(String id) => '/api/meals/$id/image';
   static String mealItem(String mealId, String itemId) =>
       '/api/meals/$mealId/items/$itemId';
+  static String mealItemResolution(String mealId, String itemId) =>
+      '/api/meals/$mealId/items/$itemId/resolve';
+  static String mealItemEstimateConfirmation(String mealId, String itemId) =>
+      '/api/meals/$mealId/items/$itemId/resolve/estimate/confirm';
   static String mealItems(String mealId) => '/api/meals/$mealId/items';
   static String mealConfirm(String id) => '/api/meals/$id/confirm';
   static String mealCorrections(String id) => '/api/meals/$id/corrections';

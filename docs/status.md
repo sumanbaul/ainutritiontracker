@@ -1,6 +1,6 @@
 # Project status
 
-Updated: 2026-07-13
+Updated: 2026-07-17
 
 The backend supports PostgreSQL persistence, development identity, user profiles and targets, food search, draft meals, corrections, confirmation, dashboard summaries, and confirmed meal history. The Flutter client supports onboarding, profile/weight management, dashboard/history, camera/gallery capture, draft review, correction, and confirmation.
 
@@ -37,3 +37,19 @@ Verified on 2026-07-13: backend build 0 warnings/errors; 22 unit tests; 20 Postg
 - Focused fasting counter completed: active sessions, idempotent completion/cancellation, secure restart cache, opt-in target notification, offline pending end replay, recent history, and Progress summary visibility. It remains informational and non-medical.
 - Final fasting-slice verification on 2026-07-13: `dotnet format`, zero-warning solution build, 24 unit tests, and 22 PostgreSQL integration tests passed. `dart format`, clean `flutter analyze`, 22 Flutter tests, and a debug APK build passed. The APK was reinstalled and launched on connected device `ff628a7d`; the restarted API returned `200 Healthy` and `204` for an authenticated user with no active fast.
 - Device-launch reliability: `scripts/install-mobile.ps1` now resolves the same ADB-reverse/LAN route as `run-mobile.ps1` and compiles the resolved API base URL into directly installed debug APKs. This prevents the physical-device app from silently using Flutter's emulator-only `10.0.2.2` fallback.
+
+# Food-resolution safety update (2026-07-17)
+
+## Automatic food resolution and future validation game (in progress)
+
+- Meal analysis now attempts conservative automatic catalog resolution and falls back to a visibly flagged AI estimate only when no safe catalog candidate is available. Estimates are private and inactive until the user confirms the meal; manual correction remains an override.
+- `FoodResolutionEvent` records automatic matches, estimates, manual edits, and removals without raw images or model responses. The Flutter review page applies mutation responses directly and prevents older refreshes from replacing newer review data.
+- A future, separate opt-in community validation game is documented: anonymized non-self tasks use swipe right to confirm and swipe left to reject; aggregate consensus can only create curator-review candidates.
+
+- Resolved the false-positive resolver path where the whole meal image could cause an unrelated visible dish to be suggested for an unresolved item. Catalog resolution now starts with the user’s current search text and limits AI ranking to matching canonical names and aliases visible to that user.
+- The AI resolver uses a dedicated structured response containing catalog candidate IDs, confidence, and rationale. The server rejects any ID outside its prefiltered shortlist, malformed responses, and duplicate suggestions. The mobile UI now labels results as `AI-ranked catalog match` rather than displaying model confidence as an authoritative percentage.
+- When a catalog search has no defensible candidate, the user can explicitly request a nutrition estimate for the exact search text. The estimate is reviewable and editable before confirmation, carries a short-lived protected token bound to the user, meal, and item, and is never auto-saved.
+- Confirming an estimate creates an unverified private custom food with `AI estimate; user reviewed` provenance and atomically resolves the draft item, recalculates nutrients/totals, and preserves confirmation eligibility rules. Search/details expose the estimate label; other users cannot see the food.
+- Added integration coverage for the Pickle case, including no unrelated catalog match, reviewed estimate confirmation, owner-only search visibility, and resolved-meal state. Added Flutter model coverage for parsing reviewed estimate drafts.
+- Verification: API Debug and Release builds passed with no warnings/errors; 24 unit tests, 24 Flutter tests, and `flutter analyze` passed. Live OpenAI checks returned zero catalog suggestions for `Pickle` and a review-required estimate named `Pickle`; `Curry` returned only curry-compatible suggestions and excluded `Bengali fish fry`. A debug APK was built and installed on connected device `ff628a7d`, and the Development API was restarted healthy on ADB-reversed port 5241. Interactive device navigation was not repeated because the device was at its lock/dream screen.
+- PostgreSQL integration ran against the configured database: 22 tests passed and 3 pre-existing tests failed because their assertions assume a different seeded-catalog state. The new food-resolution lifecycle test passed.

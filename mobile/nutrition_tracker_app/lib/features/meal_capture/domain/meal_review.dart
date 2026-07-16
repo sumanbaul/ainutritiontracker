@@ -92,17 +92,166 @@ class MealReviewItem {
 
 class FoodSearchItem {
   const FoodSearchItem(
-      {required this.id, required this.name, required this.caloriesPer100g});
+      {required this.id,
+      required this.name,
+      required this.caloriesPer100g,
+      this.canonicalName,
+      this.proteinPer100g = 0,
+      this.carbsPer100g = 0,
+      this.fatPer100g = 0,
+      this.fibrePer100g = 0,
+      this.category = 'PreparedDish',
+      this.cuisine = 'General',
+      this.preparationMethod = 'Unknown',
+      this.foodState = 'Prepared',
+      this.isVerified = false,
+      this.isUserCreated = false,
+      this.isEstimate = false,
+      this.confidence = 0,
+      this.rationale});
   final String id, name;
   final double caloriesPer100g;
+  final String? canonicalName;
+  final double proteinPer100g, carbsPer100g, fatPer100g, fibrePer100g;
+  final String category, cuisine, preparationMethod, foodState;
+  final bool isVerified, isUserCreated, isEstimate;
+  final double confidence;
+  final String? rationale;
   factory FoodSearchItem.fromJson(Map<String, dynamic> json) {
     final nutrition =
         Map<String, dynamic>.from(json['nutritionPer100Grams'] as Map);
     return FoodSearchItem(
         id: json['id'] as String,
         name: json['displayName'] as String,
-        caloriesPer100g: _number(nutrition['calories']));
+        canonicalName: json['canonicalName'] as String?,
+        caloriesPer100g: _number(nutrition['calories']),
+        proteinPer100g: _number(nutrition['protein']),
+        carbsPer100g: _number(nutrition['carbohydrates']),
+        fatPer100g: _number(nutrition['fat']),
+        fibrePer100g: _number(nutrition['fibre']),
+        category: json['category'] as String? ?? 'PreparedDish',
+        cuisine: json['cuisine'] as String? ?? 'General',
+        preparationMethod: json['preparationMethod'] as String? ?? 'Unknown',
+        foodState: json['foodState'] as String? ?? 'Prepared',
+        isVerified: json['isVerified'] as bool? ?? false,
+        isUserCreated: json['isUserCreated'] as bool? ?? false,
+        isEstimate: json['isEstimate'] as bool? ?? false);
   }
+}
+
+class FoodResolutionResult {
+  const FoodResolutionResult(
+      {required this.mealId,
+      required this.mealItemId,
+      required this.detectedName,
+      required this.suggestions,
+      required this.query,
+      required this.noMatchReason,
+      required this.estimate,
+      required this.provider,
+      required this.model});
+  final String mealId, mealItemId, detectedName, query, provider;
+  final String? model;
+  final String? noMatchReason;
+  final AiFoodEstimate? estimate;
+  final List<FoodSearchItem> suggestions;
+  factory FoodResolutionResult.fromJson(Map<String, dynamic> json) =>
+      FoodResolutionResult(
+          mealId: json['mealId'] as String,
+          mealItemId: json['mealItemId'] as String,
+          detectedName: json['detectedName'] as String,
+          query: json['query'] as String? ?? json['detectedName'] as String,
+          noMatchReason: json['noMatchReason'] as String?,
+          estimate: json['estimate'] == null
+              ? null
+              : AiFoodEstimate.fromJson(
+                  Map<String, dynamic>.from(json['estimate'] as Map)),
+          provider: json['provider'] as String? ?? 'Unknown',
+          model: json['model'] as String?,
+          suggestions: (json['suggestions'] as List? ?? const [])
+              .map((x) => _foodSearchItemFromResolutionJson(
+                  Map<String, dynamic>.from(x as Map)))
+              .toList());
+}
+
+FoodSearchItem _foodSearchItemFromResolutionJson(Map<String, dynamic> json) {
+  final nutrition =
+      Map<String, dynamic>.from(json['nutritionPer100Grams'] as Map);
+  return FoodSearchItem(
+      id: json['foodId'] as String,
+      name: json['displayName'] as String,
+      canonicalName: json['canonicalName'] as String?,
+      caloriesPer100g: _number(nutrition['calories']),
+      proteinPer100g: _number(nutrition['protein']),
+      carbsPer100g: _number(nutrition['carbohydrates']),
+      fatPer100g: _number(nutrition['fat']),
+      fibrePer100g: _number(nutrition['fibre']),
+      isVerified: json['isVerified'] as bool? ?? false,
+      isUserCreated: json['isUserCreated'] as bool? ?? false,
+      confidence: _number(json['confidence']),
+      rationale: json['rationale'] as String?,
+      preparationMethod: 'Unknown');
+}
+
+class AiFoodEstimate {
+  const AiFoodEstimate(
+      {required this.name,
+      required this.description,
+      required this.category,
+      required this.cuisine,
+      required this.preparationMethod,
+      required this.foodState,
+      required this.calories,
+      required this.protein,
+      required this.carbs,
+      required this.fat,
+      required this.fibre,
+      required this.confidence,
+      required this.assumptions,
+      required this.warning,
+      required this.token});
+  final String name,
+      category,
+      cuisine,
+      preparationMethod,
+      foodState,
+      warning,
+      token;
+  final String? description;
+  final double calories, protein, carbs, fat, fibre, confidence;
+  final List<String> assumptions;
+  factory AiFoodEstimate.fromJson(Map<String, dynamic> json) {
+    final n = Map<String, dynamic>.from(json['nutritionPer100Grams'] as Map);
+    return AiFoodEstimate(
+        name: json['name'] as String,
+        description: json['description'] as String?,
+        category: json['category'] as String,
+        cuisine: json['cuisine'] as String,
+        preparationMethod: json['preparationMethod'] as String,
+        foodState: json['foodState'] as String,
+        calories: _number(n['calories']),
+        protein: _number(n['protein']),
+        carbs: _number(n['carbohydrates']),
+        fat: _number(n['fat']),
+        fibre: _number(n['fibre']),
+        confidence: _number(json['confidence']),
+        assumptions: (json['assumptions'] as List? ?? const []).cast<String>(),
+        warning: json['warning'] as String,
+        token: json['estimateToken'] as String);
+  }
+}
+
+class CustomFoodDraft {
+  const CustomFoodDraft(
+      {required this.name,
+      required this.description,
+      required this.calories,
+      required this.protein,
+      required this.carbs,
+      required this.fat,
+      required this.fibre});
+  final String name, description;
+  final double calories, protein, carbs, fat, fibre;
 }
 
 class MealCorrection {

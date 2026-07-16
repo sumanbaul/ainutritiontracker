@@ -39,4 +39,69 @@ void main() {
     expect(review.provider, 'OpenAi');
     expect(review.hasImage, isTrue);
   });
+
+  test('food resolution parses catalog nutrition and AI rationale', () {
+    final result = FoodResolutionResult.fromJson({
+      'mealId': 'meal-1',
+      'mealItemId': 'item-1',
+      'detectedName': 'potato fry',
+      'provider': 'OpenAi',
+      'model': 'test-model',
+      'suggestions': [
+        {
+          'foodId': 'food-1',
+          'displayName': 'Aloo posto',
+          'canonicalName': 'Aloo posto',
+          'nutritionPer100Grams': {
+            'calories': 155,
+            'protein': 3,
+            'carbohydrates': 18,
+            'fat': 8,
+            'fibre': 3
+          },
+          'confidence': .82,
+          'rationale': 'Catalog match',
+          'isVerified': false,
+          'isUserCreated': false
+        }
+      ]
+    });
+    expect(result.suggestions.single.name, 'Aloo posto');
+    expect(result.suggestions.single.caloriesPer100g, 155);
+    expect(result.suggestions.single.confidence, .82);
+    expect(result.suggestions.single.rationale, 'Catalog match');
+  });
+
+  test('food resolution parses a reviewable AI estimate', () {
+    final result = FoodResolutionResult.fromJson({
+      'mealId': 'meal-1',
+      'mealItemId': 'item-1',
+      'detectedName': 'Pickle',
+      'query': 'Pickle',
+      'provider': 'OpenAi',
+      'suggestions': [],
+      'estimate': {
+        'name': 'Pickle',
+        'description': 'Generic Indian pickle estimate',
+        'category': 'Condiment',
+        'cuisine': 'General',
+        'preparationMethod': 'Mixed',
+        'foodState': 'Prepared',
+        'nutritionPer100Grams': {
+          'calories': 150,
+          'protein': 1,
+          'carbohydrates': 10,
+          'fat': 12,
+          'fibre': 2
+        },
+        'confidence': .55,
+        'assumptions': ['Oil and salt assumed'],
+        'warning': 'AI estimate',
+        'estimateToken': 'protected-token'
+      }
+    });
+    expect(result.estimate?.name, 'Pickle');
+    expect(result.estimate?.calories, 150);
+    expect(result.estimate?.token, 'protected-token');
+  });
 }

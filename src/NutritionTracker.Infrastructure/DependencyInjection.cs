@@ -66,6 +66,8 @@ public static class DependencyInjection
         services.AddSingleton<LocalMealImageStorage>(); services.AddSingleton<S3MealImageStorage>();
         services.AddSingleton<IMealImageStorage>(sp => sp.GetRequiredService<IOptions<MealAnalysisOptions>>().Value.Provider.Equals("S3", StringComparison.OrdinalIgnoreCase) ? sp.GetRequiredService<S3MealImageStorage>() : sp.GetRequiredService<LocalMealImageStorage>());
         services.AddScoped<IFoodMatcher, FoodMatcher>();
+        services.AddHttpClient<IFoodResolutionModel, FoodResolutionModel>((sp, client) => { var endpoint = sp.GetRequiredService<IOptions<MealVisionOptions>>().Value.OpenAi.Endpoint; client.BaseAddress = new Uri(endpoint); client.Timeout = Timeout.InfiniteTimeSpan; });
+        services.AddScoped<IFoodResolutionAssistant, FoodResolutionAssistant>();
         services.AddScoped<IMealAnalysisPipeline, MealAnalysisPipeline>();
         services.AddScoped<IMealManagementService, MealManagementService>();
 

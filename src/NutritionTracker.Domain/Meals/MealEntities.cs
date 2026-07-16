@@ -6,7 +6,7 @@ public enum MealType { Breakfast, Lunch, Dinner, Snack, Beverage, Unknown }
 public enum MealStatus { PendingAnalysis, AwaitingReview, Confirmed, Failed, Deleted }
 public enum AnalysisRunStatus { Processing, Succeeded, Rejected, Failed }
 /// <summary>Describes whether an item has a safe nutrition-record basis. Zero never means unknown.</summary>
-public enum NutritionMatchState { MatchedVerified, MatchedApproximate, UserSelected, UserDefined, Unresolved, NotApplicable }
+public enum NutritionMatchState { MatchedVerified, MatchedApproximate, AiCatalogMatch, AiEstimate, UserSelected, UserDefined, Unresolved, NotApplicable }
 
 public sealed class Meal : AuditableEntity
 {
@@ -76,6 +76,15 @@ public sealed class UserFoodCorrection : AuditableEntity
     public string? PredictedServingUnit { get; set; }
     public string? CorrectedServingUnit { get; set; }
     public string CorrectionType { get; set; } = string.Empty; public Meal Meal { get; set; } = null!;
+}
+/// <summary>Privacy-safe audit trail for automatic and user food-resolution decisions. Raw images and model output are never stored here.</summary>
+public sealed class FoodResolutionEvent : AuditableEntity
+{
+    public string UserId { get; set; } = string.Empty; public Guid MealId { get; set; } public Guid? MealItemId { get; set; }
+    public Guid? SelectedFoodId { get; set; } public string DetectedName { get; set; } = string.Empty; public decimal? Grams { get; set; }
+    public decimal? Calories { get; set; } public decimal? ProteinGrams { get; set; } public decimal? CarbohydrateGrams { get; set; } public decimal? FatGrams { get; set; } public decimal? FibreGrams { get; set; }
+    public string Method { get; set; } = string.Empty; public decimal? Confidence { get; set; } public string? Provider { get; set; } public string? Model { get; set; } public string? Rationale { get; set; }
+    public Meal Meal { get; set; } = null!;
 }
 public sealed class DailyNutritionSummary : AuditableEntity
 {

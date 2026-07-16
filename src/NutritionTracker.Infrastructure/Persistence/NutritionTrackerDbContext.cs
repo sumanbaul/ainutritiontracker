@@ -27,6 +27,7 @@ public sealed class NutritionTrackerDbContext(DbContextOptions<NutritionTrackerD
     public DbSet<MealItem> MealItems => Set<MealItem>();
     public DbSet<AiAnalysisRun> AiAnalysisRuns => Set<AiAnalysisRun>();
     public DbSet<UserFoodCorrection> UserFoodCorrections => Set<UserFoodCorrection>();
+    public DbSet<FoodResolutionEvent> FoodResolutionEvents => Set<FoodResolutionEvent>();
     public DbSet<DailyNutritionSummary> DailyNutritionSummaries => Set<DailyNutritionSummary>();
     public DbSet<UserDietaryPreference> UserDietaryPreferences => Set<UserDietaryPreference>();
     public DbSet<HydrationEntry> HydrationEntries => Set<HydrationEntry>();

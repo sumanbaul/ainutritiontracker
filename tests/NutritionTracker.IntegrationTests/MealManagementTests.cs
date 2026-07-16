@@ -48,6 +48,107 @@ public sealed class MealManagementTests(FoundationApiFactory factory) : IClassFi
     }
 
     [Fact]
+    public async Task UnresolvedDraftItemCanBeResolvedWithCatalogFoodAndConfirmed()
+    {
+        if (!Enabled()) return;
+
+        using var client = Client($"unresolved-{Guid.NewGuid():N}");
+        using var response = await client.PostAsync("/api/meals/analyse", Form("AmbiguousFishCurry"));
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        using var draft = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = draft.RootElement;
+        var mealId = root.GetProperty("mealId").GetGuid();
+        var itemId = root.GetProperty("items")[0].GetProperty("id").GetGuid();
+        root.GetProperty("items")[0].GetProperty("nutritionMatchState").GetString().Should().Be("Unresolved");
+
+        using var search = await client.GetAsync("/api/foods/search?q=rohu%20fish%20curry");
+        search.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var searchJson = JsonDocument.Parse(await search.Content.ReadAsStringAsync());
+        var foodId = searchJson.RootElement[0].GetProperty("id").GetGuid();
+
+        using var edit = await client.PutAsJsonAsync($"/api/meals/{mealId}/items/{itemId}", new
+        {
+            foodId,
+            grams = 180m,
+            preparationMethod = "Curried"
+        });
+        edit.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var edited = JsonDocument.Parse(await edit.Content.ReadAsStringAsync());
+        var editedItem = edited.RootElement.GetProperty("items")[0];
+        editedItem.GetProperty("foodId").GetGuid().Should().Be(foodId);
+        editedItem.GetProperty("nutritionMatchState").GetString().Should().NotBe("Unresolved");
+        editedItem.GetProperty("calories").GetDecimal().Should().BeGreaterThan(0);
+        (await client.PostAsync($"/api/meals/{mealId}/confirm", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task FoodResolutionReturnsOnlyOwnedCatalogSuggestions()
+    {
+        if (!Enabled()) return;
+
+        using var client = Client($"resolver-{Guid.NewGuid():N}");
+        using var response = await client.PostAsync("/api/meals/analyse", Form("AmbiguousFishCurry"));
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        using var draft = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var mealId = draft.RootElement.GetProperty("mealId").GetGuid();
+        var itemId = draft.RootElement.GetProperty("items")[0].GetProperty("id").GetGuid();
+
+        using var suggestions = await client.PostAsJsonAsync($"/api/meals/{mealId}/items/{itemId}/resolve", new { });
+        suggestions.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var suggestionsJson = JsonDocument.Parse(await suggestions.Content.ReadAsStringAsync());
+        suggestionsJson.RootElement.GetProperty("suggestions").EnumerateArray()
+            .Should().OnlyContain(x => x.GetProperty("foodId").GetGuid() != Guid.Empty);
+    }
+
+    [Fact]
+    public async Task UnrelatedCatalogFoodIsRejectedAndReviewedEstimateIsPrivate()
+    {
+        if (!Enabled()) return;
+        var owner = $"estimate-owner-{Guid.NewGuid():N}";
+        using var client = Client(owner);
+        using var response = await client.PostAsync("/api/meals/analyse", Form("AmbiguousFishCurry"));
+        using var draft = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var mealId = draft.RootElement.GetProperty("mealId").GetGuid();
+        var itemId = draft.RootElement.GetProperty("items")[0].GetProperty("id").GetGuid();
+
+        using var catalog = await client.PostAsJsonAsync($"/api/meals/{mealId}/items/{itemId}/resolve", new { query = "Pickle", mode = "CatalogMatch", providerId = "Mock" });
+        catalog.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var catalogJson = JsonDocument.Parse(await catalog.Content.ReadAsStringAsync());
+        catalogJson.RootElement.GetProperty("suggestions").GetArrayLength().Should().Be(0);
+        catalogJson.RootElement.GetProperty("noMatchReason").GetString().Should().Contain("No catalog food");
+
+        using var estimate = await client.PostAsJsonAsync($"/api/meals/{mealId}/items/{itemId}/resolve", new { query = "Pickle", mode = "NutritionEstimate", providerId = "Mock" });
+        estimate.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var estimateJson = JsonDocument.Parse(await estimate.Content.ReadAsStringAsync());
+        var token = estimateJson.RootElement.GetProperty("estimate").GetProperty("estimateToken").GetString();
+        token.Should().NotBeNullOrWhiteSpace();
+
+        using var confirmed = await client.PostAsJsonAsync($"/api/meals/{mealId}/items/{itemId}/resolve/estimate/confirm", new
+        {
+            estimateToken = token,
+            name = "Pickle",
+            description = "Reviewed AI estimate",
+            category = "Condiment",
+            cuisine = "General",
+            preparationMethod = "Mixed",
+            foodState = "Prepared",
+            nutritionPer100Grams = new { calories = 150m, protein = 1m, carbohydrates = 10m, fat = 12m, fibre = 2m, sugar = 5m, sodiumMilligrams = 1200m },
+            grams = 15m
+        });
+        confirmed.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var confirmedJson = JsonDocument.Parse(await confirmed.Content.ReadAsStringAsync());
+        confirmedJson.RootElement.GetProperty("items")[0].GetProperty("nutritionMatchState").GetString().Should().NotBe("Unresolved");
+
+        using var ownerSearch = await client.GetAsync("/api/foods/search?q=Pickle");
+        using var ownerSearchJson = JsonDocument.Parse(await ownerSearch.Content.ReadAsStringAsync());
+        ownerSearchJson.RootElement.EnumerateArray().Should().Contain(x => x.GetProperty("isEstimate").GetBoolean());
+        using var other = Client($"estimate-other-{Guid.NewGuid():N}");
+        using var otherSearch = await other.GetAsync("/api/foods/search?q=Pickle");
+        using var otherSearchJson = JsonDocument.Parse(await otherSearch.Content.ReadAsStringAsync());
+        otherSearchJson.RootElement.GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
     public async Task DraftManagementIsIsolatedByUserAndRequiresIdentity()
     {
         if (!Enabled()) return;
@@ -67,7 +168,7 @@ public sealed class MealManagementTests(FoundationApiFactory factory) : IClassFi
 
     private static async Task<JsonElement> CreateDraft(HttpClient client)
     {
-        using var response = await client.PostAsync("/api/meals/analyse", Form());
+        using var response = await client.PostAsync("/api/meals/analyse", Form("BengaliLunch"));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return document.RootElement.Clone();
@@ -80,7 +181,7 @@ public sealed class MealManagementTests(FoundationApiFactory factory) : IClassFi
         return client;
     }
 
-    private static MultipartFormDataContent Form()
+    private static MultipartFormDataContent Form(string scenario)
     {
         var form = new MultipartFormDataContent();
         var image = new ByteArrayContent([0xFF, 0xD8, 0xFF]);
@@ -88,7 +189,7 @@ public sealed class MealManagementTests(FoundationApiFactory factory) : IClassFi
         form.Add(image, "image", "meal.jpg");
         form.Add(new StringContent("en-IN"), "locale");
         form.Add(new StringContent("Bengali"), "cuisineHints");
-        form.Add(new StringContent("BengaliLunch"), "mockScenario");
+        form.Add(new StringContent(scenario), "mockScenario");
         return form;
     }
 

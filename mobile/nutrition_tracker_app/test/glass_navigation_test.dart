@@ -36,10 +36,10 @@ void main() {
       expect(find.text('selected 4'), findsOneWidget);
       expect(find.byType(BackdropFilter), findsOneWidget);
       final decorated = tester
-          .widgetList<Container>(find.byType(Container))
-          .where((container) =>
-              container.decoration is BoxDecoration &&
-              (container.decoration! as BoxDecoration).gradient != null);
+          .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+          .where((box) =>
+              box.decoration is BoxDecoration &&
+              (box.decoration as BoxDecoration).gradient != null);
       expect(decorated, isNotEmpty);
       expect(tester.takeException(), isNull);
     });

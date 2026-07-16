@@ -90,17 +90,21 @@ class NutritionMetricCard extends StatelessWidget {
     required this.color,
     required this.icon,
     this.unit = 'g',
+    this.expand = false,
   });
   final String label, unit;
   final double value, target;
   final Color color;
   final IconData icon;
+  final bool expand;
 
   @override
   Widget build(BuildContext context) => Container(
-        width: MediaQuery.sizeOf(context).width < 370
-            ? (MediaQuery.sizeOf(context).width - 52) / 2
-            : 158,
+        width: expand
+            ? double.infinity
+            : MediaQuery.sizeOf(context).width < 370
+                ? (MediaQuery.sizeOf(context).width - 52) / 2
+                : 158,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
