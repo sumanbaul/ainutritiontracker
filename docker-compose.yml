@@ -17,5 +17,17 @@ services:
       timeout: 5s
       retries: 5
 
+  image-gate:
+    build:
+      context: .
+      dockerfile: src/NutritionTracker.ImageGate.Mcp/Dockerfile
+    environment:
+      ImageGate__Ollama__Endpoint: ${IMAGE_GATE_OLLAMA_ENDPOINT:-http://host.docker.internal:11434/}
+      ImageGate__Ollama__Model: ${IMAGE_GATE_OLLAMA_MODEL:-gemma3:4b}
+    ports:
+      - "127.0.0.1:${IMAGE_GATE_PORT:-5250}:8080"
+    depends_on:
+      - postgres
+
 volumes:
   nutrition_tracker_postgres_data:

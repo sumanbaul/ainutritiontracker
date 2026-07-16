@@ -10,6 +10,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NutritionTracker.Domain", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NutritionTracker.Infrastructure", "src\NutritionTracker.Infrastructure\NutritionTracker.Infrastructure.csproj", "{82B9BF86-BCB9-426B-83B8-4B258D7F94DF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NutritionTracker.ImageGate.Mcp", "src\NutritionTracker.ImageGate.Mcp\NutritionTracker.ImageGate.Mcp.csproj", "{D8E7A4B1-2B7E-4A9B-8F59-1CFB8897D630}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NutritionTracker.UnitTests", "tests\NutritionTracker.UnitTests\NutritionTracker.UnitTests.csproj", "{43E2E7D5-AFC5-4261-80D0-B9572ECEF7C4}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NutritionTracker.IntegrationTests", "tests\NutritionTracker.IntegrationTests\NutritionTracker.IntegrationTests.csproj", "{4A7F596A-A887-429F-BB76-D004B34385A1}"
@@ -35,6 +37,10 @@ Global
     {82B9BF86-BCB9-426B-83B8-4B258D7F94DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
     {82B9BF86-BCB9-426B-83B8-4B258D7F94DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
     {82B9BF86-BCB9-426B-83B8-4B258D7F94DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+    {D8E7A4B1-2B7E-4A9B-8F59-1CFB8897D630}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+    {D8E7A4B1-2B7E-4A9B-8F59-1CFB8897D630}.Debug|Any CPU.Build.0 = Debug|Any CPU
+    {D8E7A4B1-2B7E-4A9B-8F59-1CFB8897D630}.Release|Any CPU.ActiveCfg = Release|Any CPU
+    {D8E7A4B1-2B7E-4A9B-8F59-1CFB8897D630}.Release|Any CPU.Build.0 = Release|Any CPU
     {82B9BF86-BCB9-426B-83B8-4B258D7F94DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
     {43E2E7D5-AFC5-4261-80D0-B9572ECEF7C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
     {43E2E7D5-AFC5-4261-80D0-B9572ECEF7C4}.Debug|Any CPU.Build.0 = Debug|Any CPU

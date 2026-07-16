@@ -19,6 +19,19 @@ Open **Settings → AI Analysis** in a Development build to choose an enabled pr
 
 For a free-per-image local option, install Ollama and pull a vision model, for example `ollama pull gemma3:4b`. Then configure only server-side values (user secrets or process environment): `MealVision:Ollama:Enabled=true`, `MealVision:Ollama:Endpoint=http://127.0.0.1:11434/`, and `MealVision:Provider=Ollama`. Cloud provider credentials and allowlists follow the same server-only rule. Disabled providers appear unavailable in Settings.
 
+### Local MCP image preflight
+
+The API preflights new meal images through the local `NutritionTracker.ImageGate.Mcp` service before calling the meal-vision provider. Start Ollama and ensure the configured local vision model is available, then start the MCP service in another terminal:
+
+```powershell
+ollama pull gemma3:4b
+dotnet run --project src/NutritionTracker.ImageGate.Mcp --urls http://127.0.0.1:5250
+```
+
+The API uses `MealVision:Preflight:Endpoint=http://127.0.0.1:5250/mcp`. The service exposes `GET /health` and the MCP endpoint at `/mcp`; it does not persist image bytes. Docker Compose also provides an `image-gate` service, configured with `IMAGE_GATE_OLLAMA_ENDPOINT`, `IMAGE_GATE_OLLAMA_MODEL`, and `IMAGE_GATE_PORT`.
+
+Production keeps `MealVision:Preflight:FailClosed=true`. Development uses the checked-in Development configuration to allow an unavailable or uncertain detector result with a warning. Explicit non-food or unacceptable-quality results still return HTTP 422 and do not create a draft or retain an image.
+
 The Bengali/Kolkata catalog is seeded at Development startup. It contains curated, medium-confidence recipe estimates and aliases, not reproduced IFCT data. Review every AI estimate; vendor oil, sugar, portions, and recipes can materially change nutrition.
 
 ## Nutrition catalog curation
@@ -67,4 +80,6 @@ flutter test test/reference_ui_golden_test.dart --update-goldens
 - If a phone cannot reach the API, confirm it is on the same Wi-Fi, allow TCP 5241 through Windows Firewall, and rerun `./scripts/run-mobile.ps1`.
 - If an APK installed by a tool cannot reach the API but `run-mobile.ps1` can, reinstall it with `./scripts/install-mobile.ps1`. Flutter Dart defines are compiled into the APK; an APK built without that script falls back to the emulator address and will not work on a physical phone.
 - An OpenAI configuration error means the API key or `MealVision:Provider=OpenAi` is missing from user secrets.
+- A meal upload returning 503 usually means the local MCP service or Ollama is unavailable. Check `http://127.0.0.1:5250/health`, the MCP process output, and `ollama list`.
+- A meal upload returning 422 means the image failed food-relevance or quality preflight. Use a clear, well-lit meal photo; the API does not retain rejected images.
 - Set `NUTRILENS_ENABLE_MOCK_MODE=true` only when you intentionally need deterministic test scenarios. The startup script otherwise selects OpenAI and fails clearly if its key is absent. Mock output does not inspect image contents.

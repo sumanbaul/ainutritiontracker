@@ -35,7 +35,7 @@ public static class DependencyInjection
         });
         services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<IFoodService, FoodService>();
-        services.AddOptions<MealVisionOptions>().Bind(configuration.GetSection(MealVisionOptions.SectionName)).Validate(x => x.RequestTimeoutSeconds is >= 1 and <= 300 && x.MaximumImageBytes is >= 1024 and <= 20_000_000 && x.MaximumItems is >= 1 and <= 50 && x.MinimumRecognitionConfidence is >= 0 and <= 1 && x.MinimumPortionConfidence is >= 0 and <= 1 && !string.IsNullOrWhiteSpace(x.PromptVersion) && !string.IsNullOrWhiteSpace(x.SchemaVersion) && (x.Provider != MealVisionProviderKind.OpenAi || (!string.IsNullOrWhiteSpace(x.OpenAi.ApiKey) && Uri.TryCreate(x.OpenAi.Endpoint, UriKind.Absolute, out _) && !string.IsNullOrWhiteSpace(x.OpenAi.Model) && x.OpenAi.MaxOutputTokens is >= 256 and <= 8_000)), "MealVision configuration is invalid. Configure credentials only in user secrets or environment variables.").ValidateOnStart();
+        services.AddOptions<MealVisionOptions>().Bind(configuration.GetSection(MealVisionOptions.SectionName)).Validate(x => x.RequestTimeoutSeconds is >= 1 and <= 300 && x.MaximumImageBytes is >= 1024 and <= 20_000_000 && x.MaximumItems is >= 1 and <= 50 && x.MinimumRecognitionConfidence is >= 0 and <= 1 && x.MinimumPortionConfidence is >= 0 and <= 1 && x.Preflight.RequestTimeoutSeconds is >= 1 and <= 60 && x.Preflight.MinimumFoodConfidence is >= 0 and <= 1 && x.Preflight.MinimumQualityScore is >= 0 and <= 1 && (!x.Preflight.Enabled || Uri.TryCreate(x.Preflight.Endpoint, UriKind.Absolute, out _)) && !string.IsNullOrWhiteSpace(x.PromptVersion) && !string.IsNullOrWhiteSpace(x.SchemaVersion) && (x.Provider != MealVisionProviderKind.OpenAi || (!string.IsNullOrWhiteSpace(x.OpenAi.ApiKey) && Uri.TryCreate(x.OpenAi.Endpoint, UriKind.Absolute, out _) && !string.IsNullOrWhiteSpace(x.OpenAi.Model) && x.OpenAi.MaxOutputTokens is >= 256 and <= 8_000)), "MealVision configuration is invalid. Configure credentials only in user secrets or environment variables.").ValidateOnStart();
         services.AddSingleton<IMealVisionProvider, MockMealVisionProvider>();
         services.AddHttpClient<OpenAiMealVisionProvider>((serviceProvider, client) =>
         {
@@ -58,6 +58,8 @@ public static class DependencyInjection
         services.AddSingleton<IMealVisionProvider>(sp => sp.GetRequiredService<OpenAiCompatibleMealVisionProvider>());
         services.AddSingleton<IMealVisionProviderCatalog, MealVisionProviderCatalog>();
         services.AddSingleton<IMealVisionProviderResolver, MealVisionProviderResolver>();
+        services.AddHttpClient("MealVisionPreflight").ConfigureHttpClient(client => client.Timeout = Timeout.InfiniteTimeSpan);
+        services.AddSingleton<IImagePreflightDetector, McpImagePreflightDetector>();
         services.AddSingleton<IMealVisionResponseValidator, MealVisionResponseValidator>();
         services.AddSingleton<IMealVisionPromptBuilder>(sp => { var x = sp.GetRequiredService<IOptions<MealVisionOptions>>().Value; return new MealVisionPromptBuilder(x.PromptVersion, x.SchemaVersion); });
         services.AddScoped<IMealVisionAnalysisService, MealVisionAnalysisService>();

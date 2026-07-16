@@ -2,6 +2,8 @@
 
 Updated: 2026-07-17
 
+The local MCP image preflight gate is implemented. New meal images are checked by the local `NutritionTracker.ImageGate.Mcp` Streamable HTTP service before provider analysis; explicit non-food/quality rejection returns 422 without storage or draft creation, while production detector failures fail closed. The MCP server uses the configured local Ollama model and does not log or persist raw image payloads.
+
 The backend supports PostgreSQL persistence, development identity, user profiles and targets, food search, draft meals, corrections, confirmation, dashboard summaries, and confirmed meal history. The Flutter client supports onboarding, profile/weight management, dashboard/history, camera/gallery capture, draft review, correction, and confirmation.
 
 Real OpenAI image analysis is implemented server-side through the existing meal-vision abstraction. It requires an OpenAI key in .NET user secrets before it can be enabled. Mock analysis remains available only for deterministic testing and is visibly labeled as simulated in review.

@@ -12,6 +12,7 @@
 | Reference-matched adaptive UI, secure meal imagery, and 12-month history activity calendar | Complete |
 | Phase 14 authentication, offline replay primitives, and conflict UX | Complete |
 | Phase 15 MVP integrity, Local self-hosted storage, and deployment hardening | Complete |
+| Local MCP image preflight gate and provider-call protection | Complete |
 | Automatic conservative food resolution and resolution audit | In progress |
 | Opt-in anonymized community validation swipe game | Future phase |
 

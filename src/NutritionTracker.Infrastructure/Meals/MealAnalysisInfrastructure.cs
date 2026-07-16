@@ -109,18 +109,20 @@ public sealed class MealAnalysisPipeline(NutritionTrackerDbContext db, IMealVisi
     {
         var hash = Convert.ToHexString(SHA256.HashData(command.ImageBytes)).ToLowerInvariant();
         var mealId = Guid.NewGuid();
-        var storageKey = await storage.SaveAsync(command.ImageBytes, command.MimeType, command.UserId, mealId, ct);
+        var storageKey = string.Empty;
         try
         {
             var previous = await db.Meals.AsNoTracking().AsSplitQuery().Include(x => x.Items).Include(x => x.AnalysisRuns)
                 .Where(x => x.UserId == command.UserId && x.Images.Any(i => i.Sha256Hash == hash) && x.Status != MealStatus.Deleted)
                 .OrderByDescending(x => x.CreatedAtUtc).FirstOrDefaultAsync(ct);
-            if (previous is not null)
+            if (previous is not null && previous.Status != MealStatus.Failed)
             {
+                storageKey = await storage.SaveAsync(command.ImageBytes, command.MimeType, command.UserId, mealId, ct);
                 var cloned = CloneAnalysis(previous, command, hash, storageKey, mealId);
                 db.Meals.Add(cloned); await db.SaveChangesAsync(ct); return ToReview(cloned);
             }
             var result = await vision.AnalyseAsync(new(command.ImageBytes, command.MimeType, command.FileName, null, null, command.Locale, [], command.CuisineHints, null, null, command.CorrelationId, command.MockScenario, command.ProviderId, command.ModelId), ct);
+            storageKey = await storage.SaveAsync(command.ImageBytes, command.MimeType, command.UserId, mealId, ct);
             var meal = new Meal { Id = mealId, UserId = command.UserId, Name = result.MealName, MealType = Enum.TryParse<MealType>(result.SuggestedMealType.ToString(), out var mealType) ? mealType : MealType.Unknown, ConsumedAtUtc = command.ConsumedAtUtc, Status = result.Status == AnalysisStatus.Rejected || !result.ContainsFood ? MealStatus.Failed : MealStatus.AwaitingReview };
             meal.Images.Add(new MealImage { StorageKey = storageKey, MimeType = command.MimeType, ByteLength = command.ImageBytes.Length, Sha256Hash = hash });
             meal.AnalysisRuns.Add(new AiAnalysisRun { UserId = command.UserId, Provider = result.Provider, Model = result.Model, PromptVersion = result.PromptVersion, SchemaVersion = result.SchemaVersion, InputImageHash = hash, Status = result.Status == AnalysisStatus.Rejected ? AnalysisRunStatus.Rejected : AnalysisRunStatus.Succeeded, ProcessingTimeMs = result.ProcessingDurationMs, ProviderRequestId = result.ProviderRequestId });
@@ -129,7 +131,7 @@ public sealed class MealAnalysisPipeline(NutritionTrackerDbContext db, IMealVisi
                 meal.Items.Add(await CreateItem(command, meal, item, result.Provider, result.Model, ct));
             CalculateTotals(meal); await db.SaveChangesAsync(ct); return ToReview(meal);
         }
-        catch { await storage.DeleteAsync(storageKey, CancellationToken.None); throw; }
+        catch { if (!string.IsNullOrWhiteSpace(storageKey)) await storage.DeleteAsync(storageKey, CancellationToken.None); throw; }
     }
     private static Meal CloneAnalysis(Meal source, MealAnalysisCommand command, string hash, string storageKey, Guid mealId)
     {

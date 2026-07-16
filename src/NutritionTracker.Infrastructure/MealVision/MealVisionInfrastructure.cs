@@ -1,4 +1,7 @@
 using System.Diagnostics;
+using System.Text.Json;
+using ModelContextProtocol.Client;
+using ModelContextProtocol.Protocol;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NutritionTracker.Application.Foods;
@@ -6,9 +9,58 @@ using NutritionTracker.Application.MealVision;
 using NutritionTracker.Domain.Foods;
 namespace NutritionTracker.Infrastructure.MealVision;
 
+public sealed class McpImagePreflightDetector(IHttpClientFactory httpClientFactory, IOptions<MealVisionOptions> options, ILogger<McpImagePreflightDetector> logger) : IImagePreflightDetector
+{
+    private static readonly Action<ILogger, string, Exception?> Unavailable = LoggerMessage.Define<string>(LogLevel.Warning, new EventId(2101, "ImagePreflightUnavailable"), "Image preflight service is unavailable: {FailureType}");
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    public async Task<ImagePreflightResult> DetectAsync(byte[] imageBytes, string mimeType, CancellationToken cancellationToken)
+    {
+        var configured = options.Value.Preflight;
+        if (!configured.Enabled) return new(ImagePreflightDecision.Accepted, 1, 1, true, [], "disabled", 0);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(configured.RequestTimeoutSeconds));
+        try
+        {
+            var transport = new HttpClientTransport(new HttpClientTransportOptions
+            {
+                Endpoint = new Uri(configured.Endpoint, UriKind.Absolute),
+                TransportMode = HttpTransportMode.StreamableHttp,
+                ConnectionTimeout = TimeSpan.FromSeconds(configured.RequestTimeoutSeconds)
+            }, httpClientFactory.CreateClient("MealVisionPreflight"), ownsHttpClient: false);
+            await using var client = await McpClient.CreateAsync(transport, cancellationToken: timeout.Token);
+            var result = await client.CallToolAsync("preflight_image", new Dictionary<string, object?>
+            {
+                ["mimeType"] = mimeType,
+                ["imageBase64"] = Convert.ToBase64String(imageBytes)
+            }, cancellationToken: timeout.Token);
+            var text = result.Content.OfType<TextContentBlock>().FirstOrDefault()?.Text;
+            if (result.IsError is true || string.IsNullOrWhiteSpace(text)) throw new InvalidOperationException("The image-gate MCP tool returned no usable result.");
+            var responseText = text!;
+            var parsed = JsonSerializer.Deserialize<ImagePreflightResult>(responseText, Json) ?? throw new JsonException("The image-gate response was empty.");
+            Validate(parsed);
+            return parsed;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { throw new MealVisionPreflightUnavailableException("Image preflight timed out."); }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (MealVisionPreflightUnavailableException) { throw; }
+        catch (Exception ex)
+        {
+            Unavailable(logger, ex.GetType().Name, null);
+            throw new MealVisionPreflightUnavailableException("Image preflight is unavailable.", ex);
+        }
+    }
+
+    private static void Validate(ImagePreflightResult result)
+    {
+        if (!Enum.IsDefined(result.Decision) || result.FoodConfidence is < 0 or > 1 || result.QualityScore is < 0 or > 1 || result.Issues.Count > 20 || result.DetectorVersion.Length > 100)
+            throw new JsonException("The image-gate response failed validation.");
+    }
+}
+
 public sealed class MealVisionOptions
 {
     public const string SectionName = "MealVision"; public MealVisionProviderKind Provider { get; init; } = MealVisionProviderKind.Mock; public string PromptVersion { get; init; } = "v1"; public string SchemaVersion { get; init; } = "1.0"; public int RequestTimeoutSeconds { get; init; } = 30; public int MaximumImageBytes { get; init; } = 5_000_000; public int MaximumItems { get; init; } = 20; public decimal MinimumRecognitionConfidence { get; init; } = .75m; public decimal MinimumPortionConfidence { get; init; } = .65m; public bool EnableClarificationQuestions { get; init; } = true; public bool EnableAlternativeCandidates { get; init; } = true; public bool EnableRawResponsePersistence { get; init; }
+    public MealVisionPreflightOptions Preflight { get; init; } = new();
     public bool AllowMockInProduction { get; init; }
     public MockMealVisionOptions Mock { get; init; } = new();
     public OpenAiMealVisionOptions OpenAi { get; init; } = new();
@@ -16,6 +68,16 @@ public sealed class MealVisionOptions
     public AnthropicMealVisionOptions Anthropic { get; init; } = new();
     public OllamaMealVisionOptions Ollama { get; init; } = new();
     public OpenAiCompatibleMealVisionOptions OpenAiCompatible { get; init; } = new();
+}
+public sealed class MealVisionPreflightOptions
+{
+    public bool Enabled { get; init; } = true;
+    public string Endpoint { get; init; } = "http://127.0.0.1:5250/mcp";
+    public int RequestTimeoutSeconds { get; init; } = 5;
+    public decimal MinimumFoodConfidence { get; init; } = .80m;
+    public decimal MinimumQualityScore { get; init; } = .70m;
+    public bool FailClosed { get; init; } = true;
+    public bool AllowUncertainInDevelopment { get; init; }
 }
 public sealed class MockMealVisionOptions { public string Scenario { get; init; } = "BengaliLunch"; public int DelayMilliseconds { get; init; } public bool ForceMalformedResponse { get; init; } public bool ForceTimeout { get; init; } public bool ForceProviderFailure { get; init; } }
 public sealed class OpenAiMealVisionOptions
@@ -83,11 +145,21 @@ public sealed class MealVisionProviderResolver(IEnumerable<IMealVisionProvider> 
             ?? throw new MealVisionProviderException($"Meal-vision provider {name} is not registered.", ProviderFailureType.Configuration);
     }
 }
-public sealed class MealVisionAnalysisService(IMealVisionProviderResolver resolver, IMealVisionPromptBuilder promptBuilder, IMealVisionResponseValidator validator, IFoodNameNormalizer normalizer, IOptions<MealVisionOptions> options, ILogger<MealVisionAnalysisService> logger) : IMealVisionAnalysisService
+public sealed class MealVisionAnalysisService(IMealVisionProviderResolver resolver, IMealVisionPromptBuilder promptBuilder, IMealVisionResponseValidator validator, IFoodNameNormalizer normalizer, IImagePreflightDetector preflightDetector, IOptions<MealVisionOptions> options, ILogger<MealVisionAnalysisService> logger) : IMealVisionAnalysisService
 {
     private static readonly Action<ILogger, string, int, Exception?> Started = LoggerMessage.Define<string, int>(LogLevel.Information, new(2001, "MealVisionAnalysisStarted"), "MealVisionAnalysisStarted {CorrelationId} {ImageByteLength}");
     private static readonly Action<ILogger, string, string, long, Exception?> Completed = LoggerMessage.Define<string, string, long>(LogLevel.Information, new(2002, "MealVisionAnalysisCompleted"), "MealVisionAnalysisCompleted {CorrelationId} {Status} {DurationMs}");
-    public async Task<MealVisionAnalysisResult> AnalyseAsync(MealVisionAnalysisInput input, CancellationToken ct) { var o = options.Value; MealVisionImageValidator.Validate(input, o.MaximumImageBytes); var id = string.IsNullOrWhiteSpace(input.ClientCorrelationId) ? Guid.NewGuid().ToString("N") : input.ClientCorrelationId[..Math.Min(input.ClientCorrelationId.Length, 100)]; Started(logger, id, input.ImageBytes.Length, null); var prompt = promptBuilder.Build(new(input.Locale, input.CuisineHints, input.DietPreference, input.MealContext)); var provider = resolver.Resolve(input.ProviderId, input.ModelId); var sw = Stopwatch.StartNew(); using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct); timeout.CancelAfter(TimeSpan.FromSeconds(o.RequestTimeoutSeconds)); MealVisionProviderResult raw; try { raw = await provider.AnalyseAsync(new(input.ImageBytes, input.MimeType, prompt, input.Locale, input.CuisineHints, input.DietPreference, o.MaximumItems, input.MockScenario, input.ModelId), timeout.Token); } catch (OperationCanceledException) when (!ct.IsCancellationRequested) { throw new MealVisionTimeoutException("The meal-vision provider timed out."); } var validation = validator.Validate(raw, o.MaximumItems); if (!validation.IsValid) throw new MealVisionSchemaValidationException(string.Join(" ", validation.Errors)); var warnings = new List<string>(); var seen = new HashSet<string>(StringComparer.Ordinal); var items = raw.Items.Select(x => Normalize(x, o, seen, warnings)).ToList(); var status = !raw.ImageQuality.Acceptable ? AnalysisStatus.Rejected : warnings.Count > 0 || items.Any(x => x.RequiresConfirmation) ? AnalysisStatus.SucceededWithWarnings : AnalysisStatus.Succeeded; sw.Stop(); Completed(logger, id, status.ToString(), sw.ElapsedMilliseconds, null); return new(id, status, provider.ProviderName, raw.Model, prompt.PromptVersion, prompt.SchemaVersion, raw.ContainsFood, raw.MealName?.Trim(), raw.MealTypeSuggestion, raw.ImageQuality, items, o.EnableClarificationQuestions ? raw.ClarificationQuestions.DistinctBy(x => x.Question).ToList() : [], warnings, sw.ElapsedMilliseconds, raw.ProviderRequestId, DateTime.UtcNow); }
+    public async Task<MealVisionAnalysisResult> AnalyseAsync(MealVisionAnalysisInput input, CancellationToken ct) { var o = options.Value; MealVisionImageValidator.Validate(input, o.MaximumImageBytes); var id = string.IsNullOrWhiteSpace(input.ClientCorrelationId) ? Guid.NewGuid().ToString("N") : input.ClientCorrelationId[..Math.Min(input.ClientCorrelationId.Length, 100)]; Started(logger, id, input.ImageBytes.Length, null); var warnings = new List<string>(); await PreflightAsync(input, o, warnings, ct); var prompt = promptBuilder.Build(new(input.Locale, input.CuisineHints, input.DietPreference, input.MealContext)); var provider = resolver.Resolve(input.ProviderId, input.ModelId); var sw = Stopwatch.StartNew(); using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct); timeout.CancelAfter(TimeSpan.FromSeconds(o.RequestTimeoutSeconds)); MealVisionProviderResult raw; try { raw = await provider.AnalyseAsync(new(input.ImageBytes, input.MimeType, prompt, input.Locale, input.CuisineHints, input.DietPreference, o.MaximumItems, input.MockScenario, input.ModelId), timeout.Token); } catch (OperationCanceledException) when (!ct.IsCancellationRequested) { throw new MealVisionTimeoutException("The meal-vision provider timed out."); } var validation = validator.Validate(raw, o.MaximumItems); if (!validation.IsValid) throw new MealVisionSchemaValidationException(string.Join(" ", validation.Errors)); var seen = new HashSet<string>(StringComparer.Ordinal); var items = raw.Items.Select(x => Normalize(x, o, seen, warnings)).ToList(); var status = !raw.ImageQuality.Acceptable ? AnalysisStatus.Rejected : warnings.Count > 0 || items.Any(x => x.RequiresConfirmation) ? AnalysisStatus.SucceededWithWarnings : AnalysisStatus.Succeeded; sw.Stop(); Completed(logger, id, status.ToString(), sw.ElapsedMilliseconds, null); return new(id, status, provider.ProviderName, raw.Model, prompt.PromptVersion, prompt.SchemaVersion, raw.ContainsFood, raw.MealName?.Trim(), raw.MealTypeSuggestion, raw.ImageQuality, items, o.EnableClarificationQuestions ? raw.ClarificationQuestions.DistinctBy(x => x.Question).ToList() : [], warnings, sw.ElapsedMilliseconds, raw.ProviderRequestId, DateTime.UtcNow); }
+    private async Task PreflightAsync(MealVisionAnalysisInput input, MealVisionOptions options, List<string> warnings, CancellationToken ct)
+    {
+        if (!options.Preflight.Enabled) return;
+        ImagePreflightResult result;
+        try { result = await preflightDetector.DetectAsync(input.ImageBytes, input.MimeType, ct); }
+        catch (MealVisionPreflightUnavailableException) when (!options.Preflight.FailClosed || options.Preflight.AllowUncertainInDevelopment) { warnings.Add("Image preflight was unavailable; the image was sent to meal analysis in development mode."); return; }
+        catch (MealVisionPreflightUnavailableException) { throw; }
+
+        new ImagePreflightPolicy(options.Preflight).Evaluate(result, warnings);
+    }
     private MealVisionItem Normalize(ProviderMealItem x, MealVisionOptions o, HashSet<string> seen, List<string> global) { var name = x.DetectedName.Trim(); var normalized = normalizer.Normalize(name); var itemWarnings = new List<string>(); if (!seen.Add(normalized)) { var warning = $"Possible duplicate item detected: {name}."; itemWarnings.Add(warning); global.Add(warning); } _ = Enum.TryParse<PreparationMethod>(x.PreparationMethod, true, out var method); if (!Enum.TryParse<EstimatedServingUnit>(x.EstimatedUnit, true, out var unit)) unit = EstimatedServingUnit.Unknown; var alternatives = x.Alternatives.Where(a => !string.Equals(normalizer.Normalize(a.Name), normalized, StringComparison.Ordinal)).DistinctBy(a => normalizer.Normalize(a.Name)).Take(5).ToList(); var hidden = x.PossibleHiddenIngredients.Select(Clean).Where(s => s.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList(); var requires = x.RecognitionConfidence < o.MinimumRecognitionConfidence || x.PortionConfidence < o.MinimumPortionConfidence || x.EstimatedGrams is null || unit == EstimatedServingUnit.Unknown || method == PreparationMethod.Unknown || alternatives.Any(a => a.Confidence >= .3m) || hidden.Count > 0 || itemWarnings.Count > 0; return new(name, Clean(x.RegionalName), method, x.EstimatedQuantity, unit, x.EstimatedGrams, decimal.Round(x.RecognitionConfidence, 3), decimal.Round(x.PortionConfidence, 3), o.EnableAlternativeCandidates ? alternatives : [], x.VisibleIngredients.Select(Clean).Where(s => s.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList(), hidden, requires, itemWarnings); }
     private static string Clean(string? value) => new string((value ?? string.Empty).Where(c => !char.IsControl(c)).ToArray()).Trim();
 }

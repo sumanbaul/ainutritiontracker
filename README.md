@@ -22,6 +22,7 @@ src/
   NutritionTracker.Application/    Future use-case contracts and application services
   NutritionTracker.Domain/         Framework-independent domain abstractions
   NutritionTracker.Infrastructure/ EF Core, PostgreSQL, persistence configuration
+  NutritionTracker.ImageGate.Mcp/   Local MCP image preflight service backed by Ollama
 tests/
   NutritionTracker.UnitTests/
   NutritionTracker.IntegrationTests/
@@ -87,6 +88,8 @@ Development and Testing expose `POST /api/development/meal-vision/analyse`. It r
 ## Phase 6 draft meal analysis
 
 `POST /api/meals/analyse` accepts a validated multipart `image` and creates an `AwaitingReview` draft using mock vision, food-database matching, and per-100-gram scaling. `GET /api/meals/{mealId}/review` is user-isolated. Drafts are not confirmed and do not update daily totals. See `docs/meal-analysis-pipeline.md`.
+
+New images pass through the local MCP image-gate service first. It rejects non-food or unacceptable-quality images before any downstream meal-analysis provider receives them. See `docs/meal-analysis-pipeline.md` and the local preflight setup in `docs/development.md`.
 
 ## Phase 7 meal confirmation and dashboard
 
