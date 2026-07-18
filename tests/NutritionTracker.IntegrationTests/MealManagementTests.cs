@@ -53,7 +53,7 @@ public sealed class MealManagementTests(FoundationApiFactory factory) : IClassFi
         if (!Enabled()) return;
 
         using var client = Client($"unresolved-{Guid.NewGuid():N}");
-        using var response = await client.PostAsync("/api/meals/analyse", Form("AmbiguousFishCurry"));
+        using var response = await client.PostAsync("/api/meals/analyse", Form("UnportionedFishCurry"));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         using var draft = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var root = draft.RootElement;

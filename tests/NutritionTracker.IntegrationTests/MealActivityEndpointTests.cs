@@ -43,10 +43,15 @@ public sealed class MealActivityEndpointTests(FoundationApiFactory factory) : IC
         using var profile = await owner.PostAsJsonAsync("/api/profile", profileRequest);
         profile.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var confirmedId = await CreateDraft(owner, "2026-07-12T20:30:00Z");
+        var timezone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Kolkata");
+        var localDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timezone));
+        var dayStartUtc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(localDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Unspecified), timezone);
+        string AtUtc(double hours) => dayStartUtc.AddHours(hours).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture);
+
+        var confirmedId = await CreateDraft(owner, AtUtc(2));
         (await owner.PostAsync($"/api/meals/{confirmedId}/confirm", null)).StatusCode.Should().Be(HttpStatusCode.OK);
-        _ = await CreateDraft(owner, "2026-07-13T02:00:00Z");
-        var deletedId = await CreateDraft(owner, "2026-07-13T03:00:00Z");
+        _ = await CreateDraft(owner, AtUtc(7.5));
+        var deletedId = await CreateDraft(owner, AtUtc(8.5));
         (await owner.PostAsync($"/api/meals/{deletedId}/confirm", null)).StatusCode.Should().Be(HttpStatusCode.OK);
         (await owner.DeleteAsync($"/api/meals/{deletedId}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
 
@@ -68,7 +73,7 @@ public sealed class MealActivityEndpointTests(FoundationApiFactory factory) : IC
         using var updatedJson = JsonDocument.Parse(await updatedProfile.Content.ReadAsStringAsync());
         var latestTarget = updatedJson.RootElement.GetProperty("currentNutritionTarget").GetProperty("targetCalories").GetDecimal();
 
-        using var response = await owner.GetAsync("/api/meals/activity?fromDate=2026-07-13&toDate=2026-07-13");
+        using var response = await owner.GetAsync($"/api/meals/activity?fromDate={localDate:yyyy-MM-dd}&toDate={localDate:yyyy-MM-dd}");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         json.RootElement.GetProperty("timezone").GetString().Should().Be("Asia/Kolkata");
@@ -79,7 +84,7 @@ public sealed class MealActivityEndpointTests(FoundationApiFactory factory) : IC
         day.GetProperty("adherencePercent").GetDecimal().Should().BeGreaterThan(0);
 
         using var other = Client($"activity-other-{Guid.NewGuid():N}");
-        using var isolated = JsonDocument.Parse(await (await other.GetAsync("/api/meals/activity?fromDate=2026-07-13&toDate=2026-07-13")).Content.ReadAsStringAsync());
+        using var isolated = JsonDocument.Parse(await (await other.GetAsync($"/api/meals/activity?fromDate={localDate:yyyy-MM-dd}&toDate={localDate:yyyy-MM-dd}")).Content.ReadAsStringAsync());
         isolated.RootElement.GetProperty("days")[0].GetProperty("mealCount").GetInt32().Should().Be(0);
     }
 
