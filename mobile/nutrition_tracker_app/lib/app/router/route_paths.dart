@@ -10,6 +10,7 @@ abstract final class RoutePaths {
       capture = '/meal/capture',
       manualMeal = '/meal/manual',
       recipes = '/recipes',
+      discoverMeals = '/discover-meals',
       habits = '/habits',
       fasting = '/fasting',
       history = '/history',

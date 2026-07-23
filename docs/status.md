@@ -2,6 +2,12 @@
 
 Updated: 2026-07-17
 
+## Discover Meals (2026-07-24)
+
+Discover Meals is implemented as a Home-entry experience with a persisted seven-day plan, a 60-recipe India-first/global catalog, diet/allergen/custom-ingredient filtering, recipe saves, and a deduplicated shopping-list action. Migration `20260723182424_AddDiscoverMealPlanning` was applied to the local development PostgreSQL database. Plan regeneration was verified against the local API after fixing refresh entry replacement. The mobile page caches the latest plan for offline display and labels its cooking guidance as general wellness information.
+
+Remaining Discover Meals work: production catalog editorial review and sourcing, a dedicated text-planning provider for optional substitutions/adaptations, planned-recipe-to-confirmed-meal logging through structured food records, an in-app shopping-list management screen, and offline mutation replay/conflict handling for plans, saves, exclusions, and shopping items.
+
 The local MCP image preflight gate is implemented. New meal images are checked by the local `NutritionTracker.ImageGate.Mcp` Streamable HTTP service before provider analysis; explicit non-food/quality rejection returns 422 without storage or draft creation, while production detector failures fail closed. The MCP server uses the configured local Ollama model and does not log or persist raw image payloads.
 
 The backend supports PostgreSQL persistence, development identity, user profiles and targets, food search, draft meals, corrections, confirmation, dashboard summaries, and confirmed meal history. The Flutter client supports onboarding, profile/weight management, dashboard/history, camera/gallery capture, draft review, correction, and confirmation.

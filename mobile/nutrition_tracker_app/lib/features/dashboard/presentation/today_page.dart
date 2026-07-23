@@ -338,6 +338,30 @@ class _TodayContent extends StatelessWidget {
             const SizedBox(height: 16),
             InkWell(
               borderRadius: BorderRadius.circular(18),
+              onTap: () => context.push(RoutePaths.discoverMeals),
+              child: GlassSurface(
+                accent: palette.accent,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(children: [
+                  Icon(Icons.restaurant_menu_rounded, color: palette.accent),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                        Text('What should I cook?',
+                            style: TextStyle(fontWeight: FontWeight.w800)),
+                        Text('A 7-day cuisine plan tailored to you.',
+                            style: TextStyle(fontSize: 12)),
+                      ])),
+                  const Icon(Icons.arrow_forward_rounded),
+                ]),
+              ),
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              borderRadius: BorderRadius.circular(18),
               onTap: () => context.push(RoutePaths.weight),
               child: GlassSurface(
                 accent: palette.accent,

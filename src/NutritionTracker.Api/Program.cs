@@ -151,6 +151,7 @@ app.MapFoodEndpoints();
 app.MapMealAnalysisEndpoints();
 app.MapMealManagementEndpoints();
 app.MapNutritionExpansionEndpoints();
+app.MapDiscoverMealsEndpoints();
 app.MapFastingEndpoints();
 app.MapAuthenticationEndpoints();
 app.MapPrivacyEndpoints();

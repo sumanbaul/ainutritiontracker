@@ -13,6 +13,7 @@ import '../../shared/presentation/app_shell.dart';
 import '../../shared/presentation/placeholder_page.dart';
 import '../../features/auth/presentation/sign_in_page.dart';
 import '../../features/recipes/presentation/recipe_picker_page.dart';
+import '../../features/discover_meals/presentation/discover_meals_page.dart';
 import 'route_paths.dart';
 
 final appRouterProvider = Provider<GoRouter>((_) => GoRouter(
@@ -48,6 +49,9 @@ final appRouterProvider = Provider<GoRouter>((_) => GoRouter(
       GoRoute(
           path: RoutePaths.recipes,
           builder: (_, __) => const RecipePickerPage()),
+      GoRoute(
+          path: RoutePaths.discoverMeals,
+          builder: (_, __) => const DiscoverMealsPage()),
       GoRoute(path: RoutePaths.habits, builder: (_, __) => const HabitsPage()),
       GoRoute(
           path: RoutePaths.fasting, builder: (_, __) => const FastingPage()),
