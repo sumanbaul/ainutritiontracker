@@ -14,11 +14,12 @@ final developmentIdentityProvider = Provider<IDevelopmentIdentityService>(
         ref.watch(appConfigProvider), ref.watch(secureStorageProvider)));
 final dioProvider = Provider<Dio>((ref) {
   final config = ref.watch(appConfigProvider);
+  final apiBaseUrl = ref.watch(apiBaseUrlProvider);
   final logger = ref.watch(appLoggerProvider);
   final identity = ref.watch(developmentIdentityProvider);
   final auth = ref.watch(authServiceProvider);
   final dio = Dio(BaseOptions(
-      baseUrl: config.apiBaseUrl,
+      baseUrl: apiBaseUrl,
       connectTimeout: config.timeout,
       sendTimeout: config.timeout,
       receiveTimeout: config.timeout,
@@ -75,15 +76,29 @@ class ApiClient {
       _dio.get<Uint8List>(path,
           cancelToken: cancelToken,
           options: Options(responseType: ResponseType.bytes));
-  Future<Response<dynamic>> post(String path, {Object? data}) =>
-      _dio.post(path, data: data);
+  Future<Response<dynamic>> post(String path,
+          {Object? data, Duration? timeout}) =>
+      _dio.post(path,
+          data: data,
+          options: timeout == null
+              ? null
+              : Options(
+                  connectTimeout: timeout,
+                  sendTimeout: timeout,
+                  receiveTimeout: timeout));
   Future<Response<dynamic>> postMultipart(String path, FormData data,
-          {CancelToken? cancelToken, ProgressCallback? onSendProgress}) =>
+          {CancelToken? cancelToken,
+          ProgressCallback? onSendProgress,
+          Duration? timeout}) =>
       _dio.post(path,
           data: data,
           cancelToken: cancelToken,
           onSendProgress: onSendProgress,
-          options: Options(contentType: Headers.multipartFormDataContentType));
+          options: Options(
+              contentType: Headers.multipartFormDataContentType,
+              connectTimeout: timeout,
+              sendTimeout: timeout,
+              receiveTimeout: timeout));
   Future<Response<dynamic>> put(String path, {Object? data}) =>
       _dio.put(path, data: data);
   Future<Response<dynamic>> delete(String path) => _dio.delete(path);

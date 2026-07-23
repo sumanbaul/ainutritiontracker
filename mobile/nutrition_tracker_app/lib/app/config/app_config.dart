@@ -5,6 +5,9 @@ import 'environment.dart';
 final appConfigProvider = Provider<AppConfig>((_) =>
     throw UnimplementedError('AppConfig must be overridden during bootstrap.'));
 
+final apiBaseUrlProvider =
+    StateProvider<String>((ref) => ref.watch(appConfigProvider).apiBaseUrl);
+
 class AppConfig {
   const AppConfig(
       {required this.appName,
@@ -26,7 +29,7 @@ class AppConfig {
   final bool enableMockMode;
   final bool enableDiagnostics;
   bool get permitsDevelopmentSetup => environment.allowsDevelopmentIdentity;
-  factory AppConfig.fromDefines() {
+  factory AppConfig.fromDefines({String? apiBaseUrlOverride}) {
     const environment =
         String.fromEnvironment('APP_ENV', defaultValue: 'development');
     const baseUrl = String.fromEnvironment('API_BASE_URL',
@@ -47,7 +50,9 @@ class AppConfig {
     return AppConfig(
         appName: 'NutriLens',
         environment: parsedEnvironment,
-        apiBaseUrl: baseUrl,
+        apiBaseUrl: apiBaseUrlOverride?.trim().isNotEmpty == true
+            ? apiBaseUrlOverride!.trim()
+            : baseUrl,
         enableNetworkLogging: parsedEnvironment.isDevelopment && logging,
         enableDevelopmentIdentity:
             parsedEnvironment.allowsDevelopmentIdentity && identity,

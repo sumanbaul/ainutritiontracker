@@ -5,6 +5,8 @@ import '../../../app/config/app_config.dart';
 import '../../../app/router/route_paths.dart';
 import '../../../core/networking/api_client.dart';
 import '../../../core/result/result.dart';
+import '../../../core/storage/secure_storage_service.dart';
+import '../../auth/data/auth_service.dart';
 import '../../splash/domain/health_repository.dart';
 
 class DevelopmentSetupPage extends ConsumerStatefulWidget {
@@ -15,6 +17,7 @@ class DevelopmentSetupPage extends ConsumerStatefulWidget {
 }
 
 class _DevelopmentSetupPageState extends ConsumerState<DevelopmentSetupPage> {
+  static const _apiBaseUrlKey = 'nutrilens.api_base_url';
   final _form = GlobalKey<FormState>();
   late final TextEditingController _url;
   late final TextEditingController _user;
@@ -37,6 +40,11 @@ class _DevelopmentSetupPageState extends ConsumerState<DevelopmentSetupPage> {
 
   Future<void> _test({required bool continueToApp}) async {
     if (!_form.currentState!.validate()) return;
+    final apiBaseUrl = _url.text.trim().replaceAll(RegExp(r'/+$'), '');
+    ref.read(apiBaseUrlProvider.notifier).state = apiBaseUrl;
+    ref.invalidate(dioProvider);
+    ref.invalidate(apiClientProvider);
+    ref.invalidate(authServiceProvider);
     setState(() {
       _busy = true;
       _status = 'Checking health and readiness…';
@@ -56,6 +64,7 @@ class _DevelopmentSetupPageState extends ConsumerState<DevelopmentSetupPage> {
           : 'Server is unreachable or not ready.';
     });
     if (success && continueToApp) {
+      await ref.read(secureStorageProvider).write(_apiBaseUrlKey, apiBaseUrl);
       await ref.read(developmentIdentityProvider).saveUserId(_user.text);
       if (mounted) context.go(RoutePaths.home);
     }

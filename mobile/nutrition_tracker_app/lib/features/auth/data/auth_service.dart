@@ -13,8 +13,8 @@ class AuthSession {
 }
 
 class AuthService {
-  AuthService(AppConfig config, this._storage)
-      : _client = Dio(BaseOptions(baseUrl: config.apiBaseUrl));
+  AuthService(String apiBaseUrl, this._storage)
+      : _client = Dio(BaseOptions(baseUrl: apiBaseUrl));
   static const _access = 'nutrilens.auth.access';
   static const _refresh = 'nutrilens.auth.refresh';
   static const _expiry = 'nutrilens.auth.expiry';
@@ -95,4 +95,4 @@ class AuthService {
 }
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService(
-    ref.watch(appConfigProvider), ref.watch(secureStorageProvider)));
+    ref.watch(apiBaseUrlProvider), ref.watch(secureStorageProvider)));

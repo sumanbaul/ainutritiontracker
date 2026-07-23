@@ -13,6 +13,8 @@ final mealRepositoryProvider = Provider((ref) => MealRepository(
     ref.watch(offlineSyncProvider),
     () => currentUserScope(ref)));
 
+const _aiRequestTimeout = Duration(seconds: 90);
+
 class MealRepository {
   MealRepository(this._api, [this._sync, this._userScope]);
   final ApiClient _api;
@@ -40,7 +42,9 @@ class MealRepository {
         if (modelId != null) 'modelId': modelId
       });
       final r = await _api.postMultipart(ApiEndpoints.mealAnalysis, form,
-          cancelToken: cancelToken, onSendProgress: onProgress);
+          cancelToken: cancelToken,
+          onSendProgress: onProgress,
+          timeout: _aiRequestTimeout);
       return Success(
           MealReview.fromJson(Map<String, dynamic>.from(r.data as Map)));
     } on DioException catch (e) {
@@ -101,13 +105,15 @@ class MealRepository {
       String? providerId,
       String? modelId}) async {
     try {
-      final response = await _api
-          .post(ApiEndpoints.mealItemResolution(mealId, itemId), data: {
-        'query': query,
-        'mode': mode,
-        if (providerId != null) 'providerId': providerId,
-        if (modelId != null) 'modelId': modelId
-      });
+      final response =
+          await _api.post(ApiEndpoints.mealItemResolution(mealId, itemId),
+              data: {
+                'query': query,
+                'mode': mode,
+                if (providerId != null) 'providerId': providerId,
+                if (modelId != null) 'modelId': modelId
+              },
+              timeout: _aiRequestTimeout);
       return Success(FoodResolutionResult.fromJson(
           Map<String, dynamic>.from(response.data as Map)));
     } on DioException catch (error) {
