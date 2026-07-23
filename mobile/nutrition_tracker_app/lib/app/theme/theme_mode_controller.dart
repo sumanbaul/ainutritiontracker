@@ -21,4 +21,9 @@ class ThemeModeController extends StateNotifier<ThemeMode> {
     state = value;
     await _storage.write(_key, value.name);
   }
+
+  Future<void> clear() async {
+    state = ThemeMode.system;
+    await _storage.delete(_key);
+  }
 }
