@@ -140,6 +140,7 @@ class GlassNavigationBar extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final reduce = MediaQuery.of(context).disableAnimations;
     final colors = AppSemanticColors.of(context);
+    final palette = AppPalette.of(context);
     final duration = reduce ? Duration.zero : const Duration(milliseconds: 320);
     final height = compact ? 58.0 : 70.0;
     final radius = height / 2;
@@ -193,9 +194,7 @@ class GlassNavigationBar extends StatelessWidget {
                         height: height - (compact ? 12 : 16),
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            color: dark
-                                ? Colors.white.withOpacity(.18)
-                                : colors.actionBackground,
+                            color: palette.accent.withOpacity(dark ? .34 : .18),
                             borderRadius: BorderRadius.circular(radius),
                           ),
                         ),
@@ -222,9 +221,7 @@ class GlassNavigationBar extends StatelessWidget {
                                         key: ValueKey('$itemIndex-$selected'),
                                         size: compact ? 24 : 27,
                                         color: selected
-                                            ? (dark
-                                                ? Colors.white
-                                                : colors.actionForeground)
+                                            ? palette.accent
                                             : (dark
                                                 ? AppColors.secondaryText
                                                 : AppColors.softInk)),

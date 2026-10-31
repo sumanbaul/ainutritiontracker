@@ -1474,6 +1474,78 @@ namespace NutritionTracker.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("NutritionTracker.Domain.Profiles.MealPlan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "StartDate")
+                        .IsUnique();
+
+                    b.ToTable("meal_plans", (string)null);
+                });
+
+            modelBuilder.Entity("NutritionTracker.Domain.Profiles.MealPlanEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CatalogRecipeId")
+                        .IsRequired()
+                        .HasMaxLength(96)
+                        .HasColumnType("character varying(96)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("MealPlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("PlannedDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Slot")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MealPlanId", "PlannedDate", "Slot")
+                        .IsUnique();
+
+                    b.ToTable("meal_plan_entries", (string)null);
+                });
+
             modelBuilder.Entity("NutritionTracker.Domain.Profiles.ReminderPreference", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1520,6 +1592,94 @@ namespace NutritionTracker.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId", "Type");
 
                     b.ToTable("reminder_preferences", (string)null);
+                });
+
+            modelBuilder.Entity("NutritionTracker.Domain.Profiles.SavedCatalogRecipe", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CatalogRecipeId")
+                        .IsRequired()
+                        .HasMaxLength(96)
+                        .HasColumnType("character varying(96)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "CatalogRecipeId")
+                        .IsUnique();
+
+                    b.ToTable("saved_catalog_recipes", (string)null);
+                });
+
+            modelBuilder.Entity("NutritionTracker.Domain.Profiles.ShoppingListItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Ingredient")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<bool>("IsChecked")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("NormalizedIngredient")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "NormalizedIngredient", "Unit")
+                        .IsUnique();
+
+                    b.ToTable("shopping_list_items", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_shopping_list_items_quantity", "\"Quantity\" > 0");
+                        });
                 });
 
             modelBuilder.Entity("NutritionTracker.Domain.Profiles.UserDietaryPreference", b =>
@@ -1850,6 +2010,17 @@ namespace NutritionTracker.Infrastructure.Persistence.Migrations
                     b.Navigation("UserProfile");
                 });
 
+            modelBuilder.Entity("NutritionTracker.Domain.Profiles.MealPlanEntry", b =>
+                {
+                    b.HasOne("NutritionTracker.Domain.Profiles.MealPlan", "MealPlan")
+                        .WithMany("Entries")
+                        .HasForeignKey("MealPlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MealPlan");
+                });
+
             modelBuilder.Entity("NutritionTracker.Domain.Profiles.WeightEntry", b =>
                 {
                     b.HasOne("NutritionTracker.Domain.Profiles.UserProfile", "UserProfile")
@@ -1889,6 +2060,11 @@ namespace NutritionTracker.Infrastructure.Persistence.Migrations
                     b.Navigation("Images");
 
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("NutritionTracker.Domain.Profiles.MealPlan", b =>
+                {
+                    b.Navigation("Entries");
                 });
 
             modelBuilder.Entity("NutritionTracker.Domain.Profiles.UserProfile", b =>

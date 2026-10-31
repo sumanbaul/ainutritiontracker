@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../app/theme/app_theme.dart';
+import 'glass_ui.dart';
 
 class NutritionHero extends StatelessWidget {
   const NutritionHero({
@@ -18,21 +19,9 @@ class NutritionHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
+    return GlassSurface(
+      radius: 24,
       padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        gradient: dark ? AppGradients.hero : null,
-        color: dark ? null : Colors.white.withOpacity(.92),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.white.withOpacity(.08)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(dark ? .18 : .08),
-            blurRadius: 32,
-            offset: const Offset(0, 16),
-          ),
-        ],
-      ),
       child: Row(children: [
         SizedBox(
           width: 132,
@@ -108,7 +97,7 @@ class NutritionMetricCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: color.withOpacity(.22)),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

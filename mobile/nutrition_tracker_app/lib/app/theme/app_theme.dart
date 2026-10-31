@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'app_color_theme_controller.dart';
+
 abstract final class AppColors {
   static const canvas = Color(0xffF8F8F5),
       warmWhite = Color(0xffFFFDF8),
@@ -39,15 +41,19 @@ abstract final class AppGradients {
 }
 
 abstract final class AppTheme {
-  static ThemeData dark() => _build(Brightness.dark);
-  static ThemeData light() => _build(Brightness.light);
+  static ThemeData dark([AppColorTheme palette = AppColorTheme.iosGlass]) =>
+      _build(Brightness.dark, palette);
+  static ThemeData light([AppColorTheme palette = AppColorTheme.iosGlass]) =>
+      _build(Brightness.light, palette);
 
-  static ThemeData _build(Brightness brightness) {
+  static ThemeData _build(Brightness brightness, AppColorTheme palette) {
     final dark = brightness == Brightness.dark;
+    final accent = AppPalette.accentFor(palette);
+    final accentSoft = Color.lerp(accent, Colors.white, dark ? .16 : .78)!;
     final scheme = ColorScheme.fromSeed(
-      seedColor: AppColors.indigo,
+      seedColor: accent,
       brightness: brightness,
-      surface: dark ? AppColors.midnight : AppColors.warmWhite,
+      surface: dark ? const Color(0xff0B0B12) : const Color(0xffFCFAFF),
     );
     final textTheme = ThemeData(brightness: brightness).textTheme.apply(
           bodyColor: dark ? AppColors.primaryText : AppColors.ink,
@@ -55,25 +61,32 @@ abstract final class AppTheme {
         );
     final foreground = dark ? AppColors.primaryText : AppColors.ink;
     final muted = dark ? AppColors.secondaryText : AppColors.softInk;
-    final actionBackground = dark ? AppColors.primaryText : AppColors.ink;
+    final actionBackground = accent;
     final actionForeground = dark ? AppColors.ink : Colors.white;
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
-      scaffoldBackgroundColor: dark ? AppColors.voidBlack : AppColors.canvas,
+      scaffoldBackgroundColor: Colors.transparent,
       extensions: [
         AppSemanticColors(
           foreground: foreground,
           muted: muted,
           actionBackground: actionBackground,
           actionForeground: actionForeground,
-          glassSurface: (dark ? const Color(0xff1B1E25) : Colors.white)
-              .withOpacity(dark ? .34 : .30),
-          glassBorder: (dark ? Colors.white : AppColors.ink)
-              .withOpacity(dark ? .18 : .12),
+          glassSurface: (dark ? const Color(0xff161621) : Colors.white)
+              .withOpacity(dark ? .70 : .56),
+          glassBorder:
+              (dark ? Colors.white : accent).withOpacity(dark ? .16 : .18),
           destructive: AppColors.danger,
         ),
+        AppPalette(
+            theme: palette,
+            accent: accent,
+            accentSoft: accentSoft,
+            pageTop: dark ? const Color(0xff14101E) : const Color(0xffF9F7FF),
+            pageBottom:
+                dark ? const Color(0xff050509) : const Color(0xffEEF0FF)),
       ],
       textTheme: textTheme.copyWith(
         displayLarge: textTheme.displayLarge
@@ -87,9 +100,11 @@ abstract final class AppTheme {
       ),
       cardTheme: CardTheme(
         elevation: 0,
-        color: dark ? AppColors.elevated : AppColors.warmWhite,
+        color: (dark ? const Color(0xff171722) : Colors.white).withOpacity(.72),
         margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(color: accent.withOpacity(dark ? .20 : .14))),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
@@ -102,19 +117,21 @@ abstract final class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: dark ? AppColors.elevated : Colors.white.withOpacity(.86),
+        fillColor: dark
+            ? const Color(0xff191822).withOpacity(.88)
+            : Colors.white.withOpacity(.66),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 20, vertical: 17),
         border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(18),
             borderSide: BorderSide(color: scheme.outlineVariant)),
         enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(24),
-            borderSide: BorderSide(
-                color: dark ? Colors.white12 : const Color(0xffDEDED8))),
+            borderRadius: BorderRadius.circular(18),
+            borderSide:
+                BorderSide(color: accent.withOpacity(dark ? .20 : .16))),
         focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(24),
-            borderSide: const BorderSide(color: AppColors.ink, width: 1.4)),
+            borderRadius: BorderRadius.circular(18),
+            borderSide: BorderSide(color: accent, width: 1.4)),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
@@ -124,7 +141,7 @@ abstract final class AppTheme {
           disabledBackgroundColor: dark ? Colors.white24 : Colors.black12,
           disabledForegroundColor: dark ? Colors.white38 : Colors.black38,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           textStyle: const TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
@@ -134,7 +151,7 @@ abstract final class AppTheme {
           foregroundColor: foreground,
           side: BorderSide(color: foreground.withOpacity(.48)),
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -216,5 +233,57 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
       glassBorder: Color.lerp(glassBorder, other.glassBorder, t)!,
       destructive: Color.lerp(destructive, other.destructive, t)!,
     );
+  }
+}
+
+@immutable
+class AppPalette extends ThemeExtension<AppPalette> {
+  const AppPalette({
+    required this.theme,
+    required this.accent,
+    required this.accentSoft,
+    required this.pageTop,
+    required this.pageBottom,
+  });
+
+  final AppColorTheme theme;
+  final Color accent, accentSoft, pageTop, pageBottom;
+
+  static AppPalette of(BuildContext context) =>
+      Theme.of(context).extension<AppPalette>()!;
+
+  static Color accentFor(AppColorTheme theme) => switch (theme) {
+        AppColorTheme.iosGlass => const Color(0xff7657FF),
+        AppColorTheme.neonRed => const Color(0xffFF3D82),
+        AppColorTheme.neonPurple => const Color(0xffBE5CFF),
+        AppColorTheme.neonBlue => const Color(0xff00C8F8),
+        AppColorTheme.neonGreen => const Color(0xff55E787),
+        AppColorTheme.amoledGold => const Color(0xffFFC247),
+      };
+
+  @override
+  AppPalette copyWith({
+    AppColorTheme? theme,
+    Color? accent,
+    Color? accentSoft,
+    Color? pageTop,
+    Color? pageBottom,
+  }) =>
+      AppPalette(
+          theme: theme ?? this.theme,
+          accent: accent ?? this.accent,
+          accentSoft: accentSoft ?? this.accentSoft,
+          pageTop: pageTop ?? this.pageTop,
+          pageBottom: pageBottom ?? this.pageBottom);
+
+  @override
+  AppPalette lerp(AppPalette? other, double t) {
+    if (other == null) return this;
+    return AppPalette(
+        theme: t < .5 ? theme : other.theme,
+        accent: Color.lerp(accent, other.accent, t)!,
+        accentSoft: Color.lerp(accentSoft, other.accentSoft, t)!,
+        pageTop: Color.lerp(pageTop, other.pageTop, t)!,
+        pageBottom: Color.lerp(pageBottom, other.pageBottom, t)!);
   }
 }

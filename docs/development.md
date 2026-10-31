@@ -38,6 +38,47 @@ The Bengali/Kolkata catalog is seeded at Development startup. It contains curate
 
 Use `scripts/curate-food-catalog.ps1` only from a trusted server or developer workstation. It validates a reviewed manifest containing a version, source, reference, and food list. Production curation additionally requires `ALLOW_NUTRILENS_PRODUCTION_CURATION=true`; it is intentionally not exposed as a mobile or public API. Never bulk-import IFCT data without written permission.
 
+## Discover Meals plans
+
+**What to cook** opens from the Today dashboard and creates a persisted seven-day plan from the built-in India-first/global catalog. It filters recipes against the profile diet and saved allergen/custom ingredient exclusions, supports recipe saves, and can add the planned ingredients to a deduplicated shopping list. The catalog preparation steps are reviewed facts; the current release deliberately falls back to those facts when no text-planning provider is configured and never invents nutrition or overrides safety filtering.
+
+Migration `20260723182424_AddDiscoverMealPlanning` creates `meal_plans`, `meal_plan_entries`, `saved_catalog_recipes`, and `shopping_list_items`. Apply it before calling `/api/discover-meals/*`:
+
+```powershell
+dotnet ef database update 20260723182424_AddDiscoverMealPlanning --project src/NutritionTracker.Infrastructure --startup-project src/NutritionTracker.Api
+```
+
+The migration was applied to the local development database on 2026-07-24. Production deployment must apply the same migration through its normal release process.
+
+## Publishing API and database changes
+
+The repository does not assume a particular hosting provider. Publish the API and apply its EF migrations from the same release job (or directly on the server) that can reach the production PostgreSQL instance. Do not run the command below from a developer machine unless its connection string is intentionally pointed at production.
+
+1. Build and publish the API from the commit being released:
+
+```powershell
+dotnet publish src/NutritionTracker.Api/NutritionTracker.Api.csproj -c Release -o .artifacts/api
+```
+
+2. Back up PostgreSQL and the configured retained-image storage before changing the server. Keep `ConnectionStrings__DefaultConnection`, JWT signing keys, provider credentials, and storage credentials in the host's secret store/environment; never copy them into the repository or publish folder.
+
+3. Copy `.artifacts/api` (or the container image produced by the host's pipeline) to the server, then apply the migration using the server's production environment:
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT = "Production"
+dotnet ef database update 20260723182424_AddDiscoverMealPlanning `
+  --project src/NutritionTracker.Infrastructure `
+  --startup-project src/NutritionTracker.Api
+```
+
+If the server only receives published binaries, run the same command from a release runner with the API project and migration assembly available, or add a one-shot migration job/container. EF records the migration in `__EFMigrationsHistory`, so rerunning it is safe and idempotent.
+
+4. Restart the API service/container and verify `/health/ready`, authentication, and `GET /api/discover-meals/recommendations`. Confirm that `POST /api/discover-meals/plan/regenerate` returns 200 for a test account. The development header `X-Development-User-Id` is not accepted in Production; use a real JWT.
+
+5. Because this release also contains Flutter changes, build and distribute a new mobile artifact through the normal signing channel. For local device verification use `./scripts/install-mobile.ps1`; production users need the signed Android/iOS release rather than the debug APK.
+
+Keep the migration file in source control and deploy the API code and migration from the same commit. If a release is rolled back, do not delete migration history or manually drop these tables; deploy a forward migration after reviewing the schema change.
+
 ## Daily workflow
 
 Use `./scripts/run-mobile.ps1`. For a USB-debugged Android device it uses ADB reverse first, so the app reaches the PC API through `127.0.0.1` without relying on Wi-Fi routing. It falls back to the detected LAN address only when ADB reverse is unavailable, starts the API if necessary, and starts Flutter with the correct development configuration. No ports or Dart defines need to be typed.

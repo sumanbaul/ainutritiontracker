@@ -34,6 +34,10 @@ public sealed class NutritionTrackerDbContext(DbContextOptions<NutritionTrackerD
     public DbSet<FastingWindow> FastingWindows => Set<FastingWindow>();
     public DbSet<ActiveFast> ActiveFasts => Set<ActiveFast>();
     public DbSet<ReminderPreference> ReminderPreferences => Set<ReminderPreference>();
+    public DbSet<MealPlan> MealPlans => Set<MealPlan>();
+    public DbSet<MealPlanEntry> MealPlanEntries => Set<MealPlanEntry>();
+    public DbSet<SavedCatalogRecipe> SavedCatalogRecipes => Set<SavedCatalogRecipe>();
+    public DbSet<ShoppingListItem> ShoppingListItems => Set<ShoppingListItem>();
     public DbSet<ApplicationUser> ApplicationUsers => Set<ApplicationUser>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
